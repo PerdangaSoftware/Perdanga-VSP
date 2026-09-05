@@ -6,7 +6,7 @@
 
 ---
 
-> **Perdanga VSP is an native media player that combines pure C++, Direct3D 11 zero-copy video rendering via libmpv, and a modern glassmorphic interface powered by Microsoft Edge WebView2.**
+> **Perdanga VSP — a native C++ media player with libmpv D3D11 rendering and a glassmorphic WebView2 UI.**
 
 🌐 <a href="https://perdanga-vsp.vercel.app/">perdanga-vsp-landing</a>
 
