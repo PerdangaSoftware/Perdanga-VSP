@@ -23,7 +23,7 @@
 
 | Video Frame Preview | Audio & Subtitles |
 | :---: | :---: |
-| <img src="https://i.ibb.co/dJ293SjW/2026-04-26-142556.png" width="400" alt="Video Frame"> | <img src="https://i.ibb.co/5xS7cY5R/2026-04-26-142250.png" width="400" alt="Audio and Subs"> |
+| <img src="https://gitlab.com/perdanga/perdanga-vsp/-/raw/main/Screenshots/Video_Frame.png?ref_type=heads" width="400" alt="Video Frame"> | <img src="https://gitlab.com/perdanga/perdanga-vsp/-/raw/main/Screenshots/Right_Click_Menu.png?ref_type=heads" width="400" alt="Audio and Subs"> |
 
 ---
 
