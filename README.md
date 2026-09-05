@@ -2,14 +2,7 @@
 
 <img src="https://i.ibb.co/tPNKHDjV/2026-06-15-012309.png" width="800" alt="Perdanga VSP Header"/> 
 
-# Perdanga VSP (Native Edition)
-
-[![Version](https://img.shields.io/badge/Version-2.0%20Native-000000?style=flat-square)](#)
-[![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011%20x64-0078D6?style=flat-square)](#)
-[![Tech](https://img.shields.io/badge/C%2B%2B-20-00599C?style=flat-square)](#)
-[![Renderer](https://img.shields.io/badge/Render-Direct3D%2011-107C41?style=flat-square)](#)
-[![Engine](https://img.shields.io/badge/Core-libmpv-darkred?style=flat-square)](#)
-[![Boosty](https://img.shields.io/badge/Support-Boosty-orange?style=flat-square)](https://boosty.to/divizion/donate)
+# Perdanga VSP 
 
 ---
 
