@@ -13,12 +13,12 @@
 </div>
 
 <p align="center">
-  <img src="https://i.ibb.co/zTNcw6md/2026-04-24-210131.png" width="800" alt="Main Interface"/>
+  <img src="https://gitlab.com/perdanga/perdanga-vsp/-/raw/main/Screenshots/Subtitles.png?ref_type=heads" width="800" alt="Main Interface"/>
 </p>
 
 <p align="center">
   <b>Media Playlist & Timeline Preview</b><br>
-  <img src="https://i.ibb.co/Y7scsRWm/2026-04-26-142943.png" width="800" alt="Playlist Menu"/>
+  <img src="https://gitlab.com/perdanga/perdanga-vsp/-/raw/main/Screenshots/Media_Playlist.png?ref_type=heads" width="800" alt="Playlist Menu"/>
 </p>
 
 | Video Frame Preview | Audio & Subtitles |
