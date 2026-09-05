@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://i.ibb.co/tPNKHDjV/2026-06-15-012309.png" width="800" alt="Perdanga VSP Header"/> 
+<img src="https://gitlab.com/perdanga/perdanga-vsp/-/raw/main/Screenshots/Perdanga_VSP.png?ref_type=heads" width="800" alt="Perdanga VSP Header"/> 
 
 # Perdanga VSP 
 
