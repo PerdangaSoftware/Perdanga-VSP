@@ -34,38 +34,23 @@
 
 ---
 
-## ⚡ Why Native over Electron?
 
-| Metric / Feature | Old Version (Electron) | New Native Edition (C++20) |
-| :--- | :--- | :--- |
-| **Startup Time** | ~1.5 – 3.0 seconds | **< 200 milliseconds (Instant)** |
-| **Idle RAM Footprint** | ~280 MB – 450 MB | **~35 MB – 70 MB** |
-| **Video Render Pipeline** | WebGL canvas frame copying | **Direct3D 11 Flip Model Swapchain (Zero-Copy)** |
-| **4K / HDR 60/120 FPS** | Micro-stutters, IPC bottleneck | **Flawless hardware decoding (`hwdec=auto-safe`)** |
-| **Seeking Latency** | Noticeable delay | **Instant keyframe & exact dual-mode scrubbing** |
-| **Package Size** | ~150 MB+ installer | **~45 MB compact standalone installer** |
-
----
-
-## 🚀 Key Features
+## Features
 
 - **Direct3D 11 Native Output:** Video rendered directly into the native Win32 window via `libmpv` with hardware VSync synchronization (`d3d11-sync-interval=1`) and `video-sync=display-resample`.
-- **Advanced Demuxer Caching:** 256 MB RAM forward read-ahead buffer and 64 MB fast backward cache for lag-free scrubbing even across local networks and slow HDDs.
-- **Hardware Shader Caching:** HLSL shaders compiled once and stored in `%LocalAppData%\Perdanga VSP\shader-cache` to eliminate frame drops on subtitle rendering.
 - **Transparent Glass UI:** Built with HTML5/CSS3 and hardware-accelerated WebView2, featuring blur effects, custom accent colors, and seamless custom window frames.
-- **Auto-Hiding Smart Cursor:** Cursor and playback controls smoothly vanish after 1.2s of inactivity during playback across both windowed and fullscreen modes.
 - **Timeline Frame Scrubbing:** Hovering over the timeline provides millisecond-precise timestamps, frame numbers, chapter tags, and real-time video thumbnails.
 - **Single-Instance Win32 Architecture:** Opening files from File Explorer immediately routes them into the active running instance with no duplicate processes.
 - **Full Subtitle & Audio Engine:** Switch embedded audio and subtitle tracks on the fly, adjust delay (`-0.1s / +0.1s`), customize vertical positioning, and load external `.srt`/`.vtt`/`.ass` files.
 
 ---
 
-## 🎬 Supported Formats
+## Supported Formats
 
 - **Video Containers:** MP4, MKV, WebM, AVI, MOV, TS, M2TS, FLV, WMV, VOB, and more.
 - **Video Codecs:** AV1, HEVC/H.265, H.264/AVC, VP9, VP8, MPEG-2, VC-1, ProRes, etc.
 - **Audio Formats:** MP3, FLAC, WAV, AAC, OGG, Opus, M4A, AC3, E-AC3, DTS, ALAC.
-- **Subtitles:** ASS/SSA (with full styling & typesetting), SRT, WebVTT, PGS, VobSub.
+- **Subtitles:** ASS/SSA, SRT, WebVTT, PGS, VobSub.
 
 ---
 
@@ -91,7 +76,7 @@
 
 ---
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 - **Core Backend:** C++20 (MSVC), Windows API (Win32), OLE / Shell APIs, DWM.
 - **Playback & Demuxing:** `libmpv` (C API, Direct3D 11, FFmpeg-based decoders).
@@ -132,8 +117,6 @@ Perdanga VSP/
 ```
 
 ---
-
-## 🔧 Building from Source
 
 ### Prerequisites
 
@@ -179,13 +162,6 @@ To compile the application and package it into a self-contained setup wizard:
 ```cmd
 make_installer.bat
 ```
-
-The script will:
-1. Compile an optimized Release build (`/O2 /LTCG /GL`).
-2. Sync all UI assets, fonts, icons, and DLLs.
-3. Invoke `ISCC.exe` to generate **`dist\PerdangaVSP_Setup.exe`**.
-
-The resulting installer automatically sets up Windows file associations (`.mp4`, `.mkv`, `.avi`, etc.), creates Start Menu / Desktop shortcuts, and sets up an uninstaller in Windows Settings.
 
 ---
 
