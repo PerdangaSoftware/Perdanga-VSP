@@ -134,6 +134,7 @@ libmpv/
 ├── lib/
 │   └── mpv.lib (or libmpv.lib)
 └── libmpv-2.dll
+```
 
 #### 2. Compile the Application
 1. Open **x64 Native Tools Command Prompt for VS**.
