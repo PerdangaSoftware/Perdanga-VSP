@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Perdanga VSP</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="resizeOverlay">
+        <div class="resize-edge resize-top" data-dir="top"></div>
+        <div class="resize-edge resize-bottom" data-dir="bottom"></div>
+        <div class="resize-edge resize-left" data-dir="left"></div>
+        <div class="resize-edge resize-right" data-dir="right"></div>
+        <div class="resize-corner resize-top-left" data-dir="top-left"></div>
+        <div class="resize-corner resize-top-right" data-dir="top-right"></div>
+        <div class="resize-corner resize-bottom-left" data-dir="bottom-left"></div>
+        <div class="resize-corner resize-bottom-right" data-dir="bottom-right"></div>
+    </div>
+
+    <div id="customTitleBar">
+        <div class="title-left">
+            <span class="title-text">Perdanga VSP</span>
+        </div>
+        <div class="title-controls">
+            <div class="title-btn" id="win-minimize" title="Minimize">
+                <svg viewBox="0 0 12 12"><path d="M11 6H1V5h10v1z"/></svg>
+            </div>
+            <div class="title-btn" id="win-maximize" title="Maximize">
+                <svg class="max-icon" viewBox="0 0 12 12"><path d="M11 11H1V1h10v10zm-1-1V2H2v8h8z"/></svg>
+                <svg class="restore-icon" viewBox="0 0 12 12" style="display:none;"><path d="M2 4h6v6H2V4zm1 1v4h4V5H3zm4-3h6v6H7V2zm1 1v4h4V3H8z"/></svg>
+            </div>
+            <div class="title-btn close-btn" id="win-close" title="Close">
+                <svg viewBox="0 0 12 12"><path d="M11.6 1.8L10.2.4 6 4.6 1.8.4.4 1.8 4.6 6 .4 10.2l1.4 1.4L6 7.4l4.2 4.2 1.4-1.4L7.4 6l4.2-4.2z"/></svg>
+            </div>
+        </div>
+    </div>
+
+    <div id="playerContainer">
+        <div id="nowPlayingBanner">
+            <div class="np-filename" id="npFilename">Filename.mp4</div>
+            <div class="np-playlist-info" id="npPlaylistInfo">Track 1 of 1</div>
+        </div>
+
+        <div id="emptyState">
+            <div class="empty-state-content">
+                <img src="ico/GreenOrange.ico" id="mainLogo" alt="Logo" class="main-logo">
+                <div class="title-glow">Perdanga Forever!</div>
+                <label for="fileInput" class="btn-primary">Open Media File</label>
+                <input type="file" id="fileInput" accept="video/*, audio/*, .mkv, .mp4, .webm, .mp3, .wav, .flac, .ogg, .m4a, .avi, .mov" multiple style="display: none;">
+                <input type="file" id="subInput" accept=".vtt,.srt,.ass" style="display: none;">
+            </div>
+        </div>
+
+        <div id="audioVisualizer">
+            <div class="audio-pulse-ring"></div>
+            <img src="ico/GreenOrange.ico" id="audioLogo" alt="Audio Playing" class="audio-logo">
+        </div>
+
+        <div id="videoClickSurface"></div>
+
+        <div id="seekOverlay" class="seek-overlay">
+            <div class="seek-content">
+                <div class="seek-arrows" id="seekArrows"></div>
+                <div class="seek-text" id="seekText"></div>
+            </div>
+        </div>
+
+        <div id="osdAlert">
+            <span class="osd-title" id="osdTitle"></span>
+            <span class="osd-main" id="osdMain"></span>
+            <span class="osd-sub" id="osdSub"></span>
+        </div>
+
+        <div id="playlistPanel" class="floating-panel">
+            <div class="panel-header">
+                <h2>Media Playlist</h2>
+                <button id="closePlaylistBtn" class="icon-btn"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+            </div>
+            <div id="playlistItems" class="panel-body"></div>
+        </div>
+
+        <div id="chaptersPanel" class="floating-panel">
+            <div class="panel-header">
+                <h2>Chapters</h2>
+                <button id="closeChaptersBtn" class="icon-btn"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+            </div>
+            <div id="chaptersItems" class="panel-body"></div>
+        </div>
+
+        <div id="timelineTooltip">
+            <div class="thumb-container" id="thumbContainer">
+                <video id="thumbVideo" muted preload="metadata"></video>
+            </div>
+            <div id="thumbText">00:00:00.000 | Frame: 0</div>
+        </div>
+
+        <div id="controls">
+            <div class="progress-container">
+                <span id="currentTime" class="time-text">00:00</span>
+                <div id="progressWrapper">
+                    <input type="range" id="progressBar" value="0" step="0.001" min="0" max="100">
+                    <div id="markersContainer"></div>
+                </div>
+                <span id="duration" class="time-text">00:00</span>
+            </div>
+
+            <div class="control-row">
+                <div class="control-group left-controls">
+                    <button class="icon-btn" id="prevBtn" title="Previous Chapter" style="display:none;">
+                        <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+                    </button>
+                    <button class="icon-btn" id="playBtn" title="Play/Pause">
+                        <svg viewBox="0 0 24 24" id="playIcon"><path d="M8 5v14l11-7z"/></svg>
+                        <svg viewBox="0 0 24 24" id="pauseIcon" style="display:none;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                    </button>
+                    <button class="icon-btn" id="nextBtn" title="Next Chapter" style="display:none;">
+                        <svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+                    </button>
+
+                    <div class="switch-wrap volume-block" id="volumeWrap" title="Adjust Volume">
+                        <button class="icon-btn" id="muteBtn">
+                            <svg viewBox="0 0 24 24" id="volUpIcon"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+                            <svg viewBox="0 0 24 24" id="volMuteIcon" style="display:none;"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
+                        </button>
+                        <input type="range" id="volumeSlider" min="0" max="1" step="0.05" value="1">
+                    </div>
+
+                    <div class="separator"></div>
+
+                    <button class="icon-btn" id="loopBtn" title="Toggle Loop (Off)">
+                        <svg viewBox="0 0 24 24" id="loopAllIcon"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+                        <svg viewBox="0 0 24 24" id="loopOneIcon" style="display:none;"><path d="M13 15V9h-1l-2 1v1h1.5v4H13zm-1-11V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+                    </button>
+
+                    <div class="separator"></div>
+
+                    <div class="switch-wrap" id="speedWrap" title="Scroll to change speed. Click to reset">
+                        <button class="icon-btn speed-btn" id="speedBtn"><span id="speedLabel">1.0x</span></button>
+                    </div>
+                </div>
+
+                <div class="control-group right-controls">
+                    <div class="combined-block" id="navTogglesBlock" style="display:none;">
+                        <button class="icon-btn" id="chaptersBtn" title="Chapters" style="display:none;">
+                            <svg viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12zM10 9h8v2h-8zm0 3h4v2h-4zm0-6h8v2h-8z"/></svg>
+                        </button>
+                        <div class="block-divider" id="navTogglesDivider" style="display:none;"></div>
+                        <button class="icon-btn" id="playlistBtn" title="Playlist" style="display:none;">
+                            <svg viewBox="0 0 24 24"><path d="M3 15h14v-2H3v2zm0 4h14v-2H3v2zm0-8h14V9H3v2zm16-6v9.5c-.32-.27-.74-.45-1.2-.45-1.03 0-1.87.84-1.87 1.88s.84 1.87 1.87 1.87 1.88-.84 1.88-1.87V5h3V3h-4z"/></svg>
+                        </button>
+                    </div>
+
+                    <div class="separator" id="navTogglesSeparator" style="display:none;"></div>
+
+                    <div class="combined-block">
+                        <div class="switch-wrap" id="audioSwitchWrap">
+                            <button class="icon-btn" id="audioSwitchBtn" title="Switch Audio Track">
+                                <svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+                            </button>
+                            <span id="audioTrackCount" class="track-count">0/0</span>
+                        </div>
+                        <div class="block-divider"></div>
+                        <div class="switch-wrap" id="subSwitchWrap">
+                            <button class="icon-btn" id="subSwitchBtn" title="Switch Subtitles">
+                                <svg viewBox="0 0 24 24"><path d="M20,4H4C2.89,4,2,6v12c0,1.11,0.89,2,2,2h16c1.11,0,2-0.89,2-2V6C22,4.89,21.11,4,20,4z M20,18H4V6h16V18z M6,10h2v2H6V10z M6,14h8v2H6V14z M16,14h2v2h-2V14z M10,10h8v2h-8V10z"/></svg>
+                            </button>
+                            <span id="subTrackCount" class="track-count">Off</span>
+                            <button class="icon-btn" id="loadSubBtn" title="Load External Subtitle" style="margin-left: -4px;">
+                                <svg viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="separator"></div>
+
+                    <button class="icon-btn" id="settingsBtn" title="Settings">
+                        <svg viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.43-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
+                    </button>
+
+                    <button class="icon-btn" id="fullscreenBtn" title="Fullscreen">
+                        <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="contextMenu">
+            <div class="ctx-columns">
+                <div class="ctx-column">
+                    <div class="ctx-section-title">Audio Tracks</div>
+                    <div id="contextAudioList" class="ctx-scrollable"></div>
+                </div>
+                <div class="ctx-column">
+                    <div class="ctx-section-title">Subtitles</div>
+                    <div id="contextSubList" class="ctx-scrollable"></div>
+                    <div class="ctx-divider"></div>
+                    <div class="ctx-btn-text" id="ctxLoadSub">+ Load External Subtitle</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="settingsModal">
+            <div class="settings-panel">
+                <div class="settings-header">
+                    <h2>Preferences</h2>
+                    <button id="closeSettingsBtn" class="icon-btn"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+                </div>
+                <div class="settings-body">
+                    <div class="setting-group">
+                        <label>App Icon</label>
+                        <select id="appIconSelect">
+                            <option value="ico/GreenOrange.ico" selected>Green Orange (Default)</option>
+                            <option value="ico/Dark Turquoise.ico">Dark Turquoise</option>
+                            <option value="ico/perdangavsp.ico">Classic (Orange)</option>
+                            <option value="ico/perdangavspblack.ico">Black</option>
+                        </select>
+                    </div>
+                    <div class="setting-group">
+                        <label>Accent Color</label>
+                        <input type="color" id="accentColorPicker" value="#c4c9b6">
+                    </div>
+                    <div class="setting-group">
+                        <label>Subtitle Size</label>
+                        <input type="range" id="subSizeSlider" min="1" max="5" step="0.1" value="1.0">
+                    </div>
+                    <div class="setting-group">
+                        <label>Subtitle Position (Height)</label>
+                        <input type="range" id="subPosSlider" min="5" max="100" step="1" value="100">
+                    </div>
+                    <div class="setting-group row">
+                        <label>Enable Menu & Logo Glow</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="glowToggle">
+                            <span class="slider-toggle"></span>
+                        </label>
+                    </div>
+                    <div class="setting-group row">
+                        <label>Enable Chapters</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="chaptersToggle" checked>
+                            <span class="slider-toggle"></span>
+                        </label>
+                    </div>
+
+                    <hr style="border: 0; border-top: 1px solid var(--glass-border); margin: 5px 0;">
+
+                    <div class="setting-group">
+                        <label>Timeline Transparency</label>
+                        <input type="range" id="timelineOpacitySlider" min="0" max="1" step="0.05" value="0.75">
+                    </div>
+                    <div class="setting-group">
+                        <label>Timeline Blur</label>
+                        <input type="range" id="timelineBlurSlider" min="0" max="64" step="1" value="24">
+                    </div>
+
+                    <div class="setting-group" style="margin-top: 10px;">
+                        <button id="openHotkeysBtn" class="btn-primary" style="padding: 10px; font-size: 0.95rem; width: 100%;">View Hotkeys & Controls</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="hotkeysModal">
+            <div class="settings-panel hotkeys-panel">
+                <div class="settings-header">
+                    <h2>Hotkeys & Controls</h2>
+                    <button id="closeHotkeysBtn" class="icon-btn"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+                </div>
+                <div class="settings-body">
+                    <div class="hotkey-row"><span class="hk-key">Space</span><span class="hk-desc">Play / Pause</span></div>
+                    <div class="hotkey-row"><span class="hk-key">Double Click</span><span class="hk-desc">Toggle Fullscreen</span></div>
+                    <div class="hotkey-row"><span class="hk-key">&lt; / &gt;</span><span class="hk-desc">Slow Down / Speed Up Playback</span></div>
+                    <div class="hotkey-row"><span class="hk-key">Left / Right</span><span class="hk-desc">Seek -/+ 5 Seconds</span></div>
+                    <div class="hotkey-row"><span class="hk-key">Shift + Left / Right</span><span class="hk-desc">Previous / Next Chapter</span></div>
+                    <div class="hotkey-row"><span class="hk-key">PgUp / PgDn</span><span class="hk-desc">Previous / Next File in Playlist</span></div>
+                    <div class="hotkey-row"><span class="hk-key">L</span><span class="hk-desc">Toggle Playlist Menu</span></div>
+                    <div class="hotkey-row"><span class="hk-key">C</span><span class="hk-desc">Toggle Chapters Menu</span></div>
+                    <div class="hotkey-row"><span class="hk-key">S</span><span class="hk-desc">Take Screenshot</span></div>
+                    <div class="hotkey-row"><span class="hk-key">Ctrl + / -</span><span class="hk-desc">Subtitle Size</span></div>
+                    <div class="hotkey-row"><span class="hk-key">Shift + / -</span><span class="hk-desc">Subtitle Vertical Position</span></div>
+                    <div class="hotkey-row"><span class="hk-key">G / H</span><span class="hk-desc">Subtitle Sync Delay (-/+ 0.1s)</span></div>
+                    <div class="hotkey-row"><span class="hk-key">Scroll Wheel</span><span class="hk-desc">Hover over track/volume/speed icons to cycle</span></div>
+                    <div class="hotkey-row"><span class="hk-key">Right Click</span><span class="hk-desc">Open Track Selection Menu</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="bridge.js"></script>
+    <script src="renderer.js"></script>
+    <script src="hotkeys.js"></script>
+</body>
+</html>
