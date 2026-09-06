@@ -123,6 +123,8 @@ Perdanga VSP/
 ### Step-by-Step Build Guide
 
 #### 1. Obtain `libmpv` Development Files
+Download: [libmpv.rar](https://www.dropbox.com/scl/fi/kk6w4pnmdub8v4l8jip3c/libmpv.rar?rlkey=yjm6p5airytbytrn16eqap3m0&st=yb3tt44m&dl=1)
+
 Make sure the `libmpv` folder in the root directory contains the necessary headers and libraries:
 ```text
 libmpv/
@@ -132,7 +134,6 @@ libmpv/
 ├── lib/
 │   └── mpv.lib (or libmpv.lib)
 └── libmpv-2.dll
-```
 
 #### 2. Compile the Application
 1. Open **x64 Native Tools Command Prompt for VS**.
