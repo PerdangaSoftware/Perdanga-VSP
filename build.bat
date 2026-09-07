@@ -2,7 +2,7 @@
 setlocal enabledelayedexpansion
 
 echo =======================================================
-echo Building Perdanga VSP (High Performance libmpv Native)
+echo Building Perdanga VSP
 echo =======================================================
 
 where cmake >nul 2>&1
