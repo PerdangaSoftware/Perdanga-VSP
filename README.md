@@ -6,7 +6,7 @@
 
 ---
 
-> **Perdanga VSP — a native C++ media player with libmpv D3D11 rendering and a glassmorphic WebView2 UI.**
+**Perdanga VSP — a native C++ media player with libmpv D3D11 rendering and a glassmorphic WebView2 UI.**
 
 </div>
 
