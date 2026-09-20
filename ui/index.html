@@ -87,9 +87,11 @@
             <div id="chaptersItems" class="panel-body"></div>
         </div>
 
+        <!-- Dual Pipeline Tooltip (Native HTML5 Video + Universal MPV Image Frame) -->
         <div id="timelineTooltip">
             <div class="thumb-container" id="thumbContainer">
                 <video id="thumbVideo" muted preload="metadata"></video>
+                <img id="thumbImg" class="thumb-img" alt="" style="display: none;" />
             </div>
             <div id="thumbText">00:00:00.000 | Frame: 0</div>
         </div>
@@ -246,7 +248,7 @@
 
                     <div class="setting-group">
                         <label>Timeline Transparency</label>
-                        <input type="range" id="timelineOpacitySlider" min="0" max="1" step="0.05" value="0.75">
+                        <input type="range" id="timelineOpacitySlider" min="0" max="1" step="0.05" value="0.82">
                     </div>
                     <div class="setting-group">
                         <label>Timeline Blur</label>
@@ -286,7 +288,16 @@
         </div>
     </div>
 
+    <!-- Modular Frontend Pipeline -->
     <script src="bridge.js"></script>
+    <script src="state.js"></script>
+    <script src="utils.js"></script>
+    <script src="osd.js"></script>
+    <script src="thumbnails.js"></script>
+    <script src="timeline.js"></script>
+    <script src="tracks.js"></script>
+    <script src="playlist.js"></script>
+    <script src="settings.js"></script>
     <script src="renderer.js"></script>
     <script src="hotkeys.js"></script>
 </body>

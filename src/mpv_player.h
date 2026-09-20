@@ -7,6 +7,7 @@
 #include <thread>
 #include <atomic>
 #include <mutex>
+#include <condition_variable>
 
 class MpvPlayer {
 public:
@@ -28,12 +29,18 @@ public:
 
     void SetEventCallback(EventCallback cb);
     mpv_handle* GetHandle() const { return m_mpv; }
-    bool IsPaused() const { return m_isPaused.load(); }
+    bool IsPaused() const { return m_isPaused.load(std::memory_order_relaxed); }
+
+    // Universal Thumbnail Extraction
+    void RequestThumbnail(double time);
 
 private:
     void EventLoop();
+    void ThumbnailLoop();
     std::string NodeToJson(const mpv_node* node);
+    void ApplyHighFidelityRenderProfiles();
 
+    // Primary Player
     mpv_handle* m_mpv = nullptr;
     std::thread m_eventThread;
     std::atomic<bool> m_running{ false };
@@ -41,7 +48,17 @@ private:
     EventCallback m_eventCallback;
     std::mutex m_cbMutex;
 
-    // Внутренние переменные троттлинга частоты time-pos
     double m_lastReportedTime = -1.0;
     ULONGLONG m_lastTimeReportTick = 0;
+
+    // Background Thumbnail Worker
+    mpv_handle* m_thumbMpv = nullptr;
+    HWND m_thumbHwnd = NULL;
+    std::thread m_thumbThread;
+    std::mutex m_thumbMutex;
+    std::condition_variable m_thumbCv;
+    std::string m_currentThumbFilePath;
+    std::string m_tempThumbPath;
+    double m_pendingThumbTime = -1.0;
+    bool m_hasPendingThumbRequest = false;
 };

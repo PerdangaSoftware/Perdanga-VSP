@@ -1,7 +1,10 @@
+// utils.h — shared helpers for the Perdanga VSP host application.
 #pragma once
+
 #include <windows.h>
 #include <shlwapi.h>
 #include <shlobj.h>
+#include <cstdio>
 #include <string>
 #include <vector>
 #include <filesystem>
@@ -38,26 +41,33 @@ inline std::wstring Utf8ToUtf16(const std::string& str) {
     return wstrTo;
 }
 
+// Escape a string for embedding into a JSON string literal.
+// FIX: \uXXXX escapes MUST be padded to exactly 4 hex digits. The previous
+// version emitted e.g. "\u1" for control char 0x01, which is invalid JSON —
+// PostWebMessageAsJson then silently drops the whole message.
 inline std::string EscapeJson(const std::string& s) {
-    std::ostringstream o;
-    for (char c : s) {
+    std::string out;
+    out.reserve(s.size() + 8);
+    char buf[8];
+    for (unsigned char c : s) {
         switch (c) {
-            case '"': o << "\\\""; break;
-            case '\\': o << "\\\\"; break;
-            case '\b': o << "\\b"; break;
-            case '\f': o << "\\f"; break;
-            case '\n': o << "\\n"; break;
-            case '\r': o << "\\r"; break;
-            case '\t': o << "\\t"; break;
+            case '"':  out += "\\\""; break;
+            case '\\': out += "\\\\"; break;
+            case '\b': out += "\\b"; break;
+            case '\f': out += "\\f"; break;
+            case '\n': out += "\\n"; break;
+            case '\r': out += "\\r"; break;
+            case '\t': out += "\\t"; break;
             default:
-                if ('\x00' <= c && c <= '\x1f') {
-                    o << "\\u" << std::hex << (int)c;
+                if (c < 0x20) {
+                    std::snprintf(buf, sizeof(buf), "\\u%04x", static_cast<int>(c));
+                    out += buf;
                 } else {
-                    o << c;
+                    out += static_cast<char>(c);
                 }
         }
     }
-    return o.str();
+    return out;
 }
 
 inline bool IsMediaExtension(const std::wstring& ext) {
@@ -121,7 +131,7 @@ inline PlaylistResult BuildPlaylistData(const std::vector<std::wstring>& inputPa
             if (IsSubExtension(ext)) {
                 subFiles.push_back(p.wstring());
             } else {
-                // Все файлы, переданные напрямую, добавляем в плейлист
+                // All files passed directly are added to the playlist
                 mediaFiles.push_back(p.wstring());
             }
         }
@@ -131,6 +141,7 @@ inline PlaylistResult BuildPlaylistData(const std::vector<std::wstring>& inputPa
     int targetIdx = 0;
 
     if (mediaFiles.size() == 1) {
+        // Single file: build the playlist from all media siblings in the folder
         std::filesystem::path target(mediaFiles[0]);
         std::filesystem::path parentDir = target.parent_path();
         std::vector<std::wstring> siblingFiles;

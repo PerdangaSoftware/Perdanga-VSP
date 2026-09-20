@@ -1,85 +1,98 @@
 @echo off
+chcp 65001 >nul
 setlocal enabledelayedexpansion
 
 echo =======================================================
-echo Building Perdanga VSP
+echo 1. Компиляция приложения (Perdanga VSP)...
 echo =======================================================
 
-where cmake >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [ERROR] CMake is not found in your PATH.
-    echo Launch this script from "x64 Native Tools Command Prompt for VS".
-    pause
-    exit /b 1
-)
-
-:: Завершение работающего процесса (если запущен)
+:: Завершение процесса, если он запущен
 taskkill /F /IM PerdangaVSP.exe >nul 2>&1
 
-:: Создаем папку src если ее нет
-if not exist "src" mkdir "src"
-
-:: Авто-исправление расширений файлов, если они сохранились как .txt
-for %%F in (main mpv_player) do (
-    if exist "%%F.cpp.txt" ren "%%F.cpp.txt" "%%F.cpp"
-    if exist "%%F.txt" ren "%%F.txt" "%%F.cpp"
-    if exist "src\%%F.cpp.txt" ren "src\%%F.cpp.txt" "%%F.cpp"
-    if exist "src\%%F.txt" ren "src\%%F.txt" "%%F.cpp"
-)
-
-for %%F in (utils mpv_player) do (
-    if exist "%%F.h.txt" ren "%%F.h.txt" "%%F.h"
-    if exist "%%F.txt" ren "%%F.txt" "%%F.h"
-    if exist "src\%%F.h.txt" ren "src\%%F.h.txt" "%%F.h"
-    if exist "src\%%F.txt" ren "src\%%F.txt" "%%F.h"
-)
-
-:: Если исходники лежат в корне, аккуратно синхронизируем их в папку src
-if exist "main.cpp" copy /Y "main.cpp" "src\main.cpp" >nul
-if exist "mpv_player.cpp" copy /Y "mpv_player.cpp" "src\mpv_player.cpp" >nul
-if exist "mpv_player.h" copy /Y "mpv_player.h" "src\mpv_player.h" >nul
-if exist "utils.h" copy /Y "utils.h" "src\utils.h" >nul
-
-:: Проверка наличия utils.h перед вызовом CMake
-if not exist "src\utils.h" (
-    echo [ERROR] Critical file "src\utils.h" is missing!
-    echo Please create the file "src\utils.h" and paste the code from utils.h into it.
-    pause
-    exit /b 1
-)
-
-:: Очистка сломанного кэша CMake от предыдущих неудачных попыток
+:: Очистка старого кэша
 if exist "build\CMakeCache.txt" del /f /q "build\CMakeCache.txt" >nul 2>&1
 
-:: Конфигурация CMake
+:: Сборка приложения
 cmake -B build -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release
 if %errorlevel% neq 0 (
     echo.
-    echo [ERROR] CMake configuration failed.
+    echo [ОШИБКА] Сбой конфигурации CMake.
     pause
     exit /b 1
 )
 
-:: Компиляция проекта
 cmake --build build --config Release
 if %errorlevel% neq 0 (
     echo.
-    echo [ERROR] Compilation failed.
+    echo [ОШИБКА] Сбой компиляции приложения.
     pause
     exit /b 1
 )
 
-:: Копирование библиотек libmpv в build
+:: Копирование библиотек DLL и папки UI в build
 if exist "libmpv\mpv.dll" xcopy /Y "libmpv\mpv.dll" "build\" >nul
 if exist "libmpv\lib\mpv.dll" xcopy /Y "libmpv\lib\mpv.dll" "build\" >nul
 if exist "libmpv\libmpv-2.dll" xcopy /Y "libmpv\libmpv-2.dll" "build\" >nul
 if exist "libmpv\lib\libmpv-2.dll" xcopy /Y "libmpv\lib\libmpv-2.dll" "build\" >nul
 
-:: Копирование папки UI
 if not exist "build\ui" mkdir "build\ui"
 xcopy /E /I /Y "ui" "build\ui" >nul
 
+if not exist "build\PerdangaVSP.exe" (
+    echo.
+    echo [ОШИБКА] build\PerdangaVSP.exe не найден.
+    pause
+    exit /b 1
+)
+
+echo.
 echo =======================================================
-echo Build successful! Executable is at: build\PerdangaVSP.exe
+echo 2. Подготовка логотипа плеера для установщика...
+echo =======================================================
+if not exist "VspLogo.bmp" (
+    echo Скачивание логотипа VspLogo.png с GitLab...
+    powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; (New-Object Net.WebClient).DownloadFile('https://gitlab.com/perdanga/perdanga-vsp/-/raw/main/Screenshots/VspLogo.png?ref_type=heads', 'VspLogo.png')"
+    
+    echo Создание 55x55 BMP для Inno Setup...
+    powershell -Command "Add-Type -AssemblyName System.Drawing; $src = [System.Drawing.Image]::FromFile('VspLogo.png'); $bmp = New-Object System.Drawing.Bitmap(55, 55); $g = [System.Drawing.Graphics]::FromImage($bmp); $g.Clear([System.Drawing.Color]::White); $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic; $g.DrawImage($src, 0, 0, 55, 55); $g.Dispose(); $src.Dispose(); $bmp.Save('VspLogo.bmp', [System.Drawing.Imaging.ImageFormat]::Bmp); $bmp.Dispose()"
+)
+
+echo.
+echo =======================================================
+echo 3. Поиск компилятора Inno Setup...
+echo =======================================================
+set "ISCC_PATH="
+if exist "%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe" set "ISCC_PATH=%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe"
+if exist "%ProgramFiles%\Inno Setup 6\ISCC.exe" set "ISCC_PATH=%ProgramFiles%\Inno Setup 6\ISCC.exe"
+if exist "%LocalAppData%\Programs\Inno Setup 6\ISCC.exe" set "ISCC_PATH=%LocalAppData%\Programs\Inno Setup 6\ISCC.exe"
+
+if "!ISCC_PATH!"=="" (
+    where iscc >nul 2>&1
+    if !errorlevel! equ 0 (
+        set "ISCC_PATH=iscc"
+    ) else (
+        echo.
+        echo [ВНИМАНИЕ] Inno Setup 6 не обнаружен на компьютере!
+        echo.
+        pause
+        exit /b 1
+    )
+)
+
+echo Найден компилятор: "!ISCC_PATH!"
+echo Создание файла установки...
+"!ISCC_PATH!" "installer.iss"
+
+if %errorlevel% neq 0 (
+    echo.
+    echo [ОШИБКА] Не удалось создать установочный файл.
+    pause
+    exit /b 1
+)
+
+echo.
+echo =======================================================
+echo УСПЕШНО! Готовый инсталлятор создан:
+echo dist\PerdangaVSP_Setup.exe
 echo =======================================================
 pause
