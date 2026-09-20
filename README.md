@@ -159,6 +159,5 @@ make_installer.bat
 
 <div align="center">
   <img src="https://gitlab.com/perdanga/perdanga-vsp/-/raw/main/Screenshots/GreenOrange.ico?ref_type=heads" width="120" alt="Perdanga VSP Logo"/> 
-  <br><br>
   <h2>Perdanga Forever!</h2>
 </div>
