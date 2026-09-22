@@ -4,7 +4,7 @@
 
 # Perdanga VSP 
 
-**Perdanga VSP — A native C++ media player built with libmpv and D3D11 hardware rendering.**
+**Perdanga VSP - a native C++ media player built with libmpv and D3D11 hardware rendering.**
 
 </div>
 
