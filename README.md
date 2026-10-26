@@ -69,10 +69,10 @@
 
 - **Core Backend:** C++20 (MSVC), Windows API (Win32), OLE / Shell APIs, DWM.
 - **Playback & Demuxing:** `libmpv` (C API, Direct3D 11, FFmpeg-based decoders).
-- **UI Runtime:** Microsoft Edge WebView2 (Evergreen Runtime, transparent composition).
-- **Frontend:** Vanilla JavaScript (ES6+), CSS3 Glassmorphism, Semantic HTML5.
-- **Build System:** CMake 3.20+ with NMake Makefiles.
-- **Packaging:** Inno Setup 6 (Solid LZMA2 compression).
+- **UI Runtime:** WebView2.
+- **Frontend:** Vanilla js.
+- **Build System:** CMake with NMake Makefiles.
+- **Packaging:** Inno Setup 6.
 
 ---
 
@@ -111,8 +111,8 @@ Perdanga VSP/
 
 1. **Windows 10 / 11 (64-bit)**
 2. **Visual Studio 2022 / 2026** (or Build Tools) with the **"Desktop development with C++"** workload.
-3. **CMake 3.20 or newer** (usually included with Visual Studio).
-4. **Inno Setup 6** (Required only for building the installer: `winget install JR.InnoSetup`).
+3. **CMake 3.20 or newer**.
+4. **Inno Setup 6** (Required only for building the installer).
 
 ---
 
@@ -131,7 +131,7 @@ libmpv/
 └── libmpv-2.dll
 ```
 
-#### 2. Compile the Application
+#### 2. 📦 Compile the Application and Installer
 1. Open **x64 Native Tools Command Prompt for VS**.
 2. Navigate to the project root directory:
    ```cmd
@@ -141,17 +141,7 @@ libmpv/
    ```cmd
    build.bat
    ```
-*The compiled native executable will be located at `build\PerdangaVSP.exe`.*
-
----
-
-### 📦 Creating the Installer
-
-To compile the application and package it into a self-contained setup wizard:
-
-```cmd
-make_installer.bat
-```
+*The compiled executable will be located at `build\PerdangaVSP.exe`.*
 
 ---
 
