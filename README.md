@@ -82,7 +82,6 @@
 Perdanga VSP/
 ├── CMakeLists.txt          # Root CMake build configuration
 ├── build.bat               # Fast compilation script
-├── make_installer.bat      # 1-click build & Inno Setup packager
 ├── installer.iss           # Inno Setup installation script & registry associations
 │
 ├── src/                    # C++ Native Core
