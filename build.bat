@@ -72,12 +72,27 @@ if not exist "build\PerdangaVSP.exe" (
     exit /b 1
 )
 
-if not exist "VspLogo.bmp" (
-    powershell -NoProfile -Command "Add-Type -AssemblyName System.Drawing; if (Test-Path 'ui\ico\GreenOrange.ico') { $icon = New-Object System.Drawing.Icon((Resolve-Path 'ui\ico\GreenOrange.ico').Path); $src = $icon.ToBitmap(); $bmp = New-Object System.Drawing.Bitmap(55, 55); $g = [System.Drawing.Graphics]::FromImage($bmp); $g.Clear([System.Drawing.Color]::White); $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic; $g.DrawImage($src, 0, 0, 55, 55); $g.Dispose(); $bmp.Save('VspLogo.bmp', [System.Drawing.Imaging.ImageFormat]::Bmp); $bmp.Dispose(); $src.Dispose(); $icon.Dispose() }"
-)
-
-if not exist "WizardImage.bmp" (
-    powershell -NoProfile -Command "Add-Type -AssemblyName System.Drawing; if (Test-Path 'ui\ico\GreenOrange.ico') { $icon = New-Object System.Drawing.Icon((Resolve-Path 'ui\ico\GreenOrange.ico').Path); $src = $icon.ToBitmap(); $bmp = New-Object System.Drawing.Bitmap(164, 314); $g = [System.Drawing.Graphics]::FromImage($bmp); $g.Clear([System.Drawing.Color]::FromArgb(18, 21, 20)); $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic; $g.DrawImage($src, 18, 93, 128, 128); $g.Dispose(); $bmp.Save('WizardImage.bmp', [System.Drawing.Imaging.ImageFormat]::Bmp); $bmp.Dispose(); $src.Dispose(); $icon.Dispose() }"
+if not exist "WizardImage200.bmp" (
+    powershell -NoProfile -Command ^
+    "Add-Type -AssemblyName System.Drawing; ^
+    $src = if (Test-Path 'VspLogo.png') { [System.Drawing.Image]::FromFile((Resolve-Path 'VspLogo.png').Path) } elseif (Test-Path 'ui\ico\GreenOrange.ico') { (New-Object System.Drawing.Icon((Resolve-Path 'ui\ico\GreenOrange.ico').Path, 256, 256)).ToBitmap() } else { $null }; ^
+    if ($src) { ^
+        $b = New-Object System.Drawing.Bitmap(328, 628); $g = [System.Drawing.Graphics]::FromImage($b); $g.Clear([System.Drawing.Color]::FromArgb(18, 21, 20)); $g.InterpolationMode = 7; $g.SmoothingMode = 2; $g.PixelOffsetMode = 2; ^
+        $p = New-Object System.Drawing.Drawing2D.GraphicsPath; $p.AddArc(24, 149, 112, 112, 180, 90); $p.AddArc(192, 149, 112, 112, 270, 90); $p.AddArc(192, 317, 112, 112, 0, 90); $p.AddArc(24, 317, 112, 112, 90, 90); $p.CloseFigure(); ^
+        $g.SetClip($p); $g.DrawImage($src, 24, 149, 280, 280); $g.ResetClip(); ^
+        $pen = New-Object System.Drawing.Pen([System.Drawing.Color]::FromArgb(45, 255, 255, 255), 1.5); $g.DrawPath($pen, $p); $pen.Dispose(); $p.Dispose(); $g.Dispose(); ^
+        $b.Save('WizardImage200.bmp', [System.Drawing.Imaging.ImageFormat]::Bmp); $b.Dispose(); ^
+        $b = New-Object System.Drawing.Bitmap(164, 314); $g = [System.Drawing.Graphics]::FromImage($b); $g.Clear([System.Drawing.Color]::FromArgb(18, 21, 20)); $g.InterpolationMode = 7; $g.SmoothingMode = 2; $g.PixelOffsetMode = 2; ^
+        $p = New-Object System.Drawing.Drawing2D.GraphicsPath; $p.AddArc(12, 75, 56, 56, 180, 90); $p.AddArc(96, 75, 56, 56, 270, 90); $p.AddArc(96, 159, 56, 56, 0, 90); $p.AddArc(12, 159, 56, 56, 90, 90); $p.CloseFigure(); ^
+        $g.SetClip($p); $g.DrawImage($src, 12, 75, 140, 140); $g.ResetClip(); ^
+        $pen = New-Object System.Drawing.Pen([System.Drawing.Color]::FromArgb(45, 255, 255, 255), 1.0); $g.DrawPath($pen, $p); $pen.Dispose(); $p.Dispose(); $g.Dispose(); ^
+        $b.Save('WizardImage.bmp', [System.Drawing.Imaging.ImageFormat]::Bmp); $b.Dispose(); ^
+        $b = New-Object System.Drawing.Bitmap(110, 110); $g = [System.Drawing.Graphics]::FromImage($b); $g.Clear([System.Drawing.Color]::FromArgb(26, 32, 29)); $g.InterpolationMode = 7; $g.SmoothingMode = 2; $g.PixelOffsetMode = 2; ^
+        $g.DrawImage($src, 0, 0, 110, 110); $g.Dispose(); $b.Save('VspLogo200.bmp', [System.Drawing.Imaging.ImageFormat]::Bmp); $b.Dispose(); ^
+        $b = New-Object System.Drawing.Bitmap(55, 55); $g = [System.Drawing.Graphics]::FromImage($b); $g.Clear([System.Drawing.Color]::FromArgb(26, 32, 29)); $g.InterpolationMode = 7; $g.SmoothingMode = 2; $g.PixelOffsetMode = 2; ^
+        $g.DrawImage($src, 0, 0, 55, 55); $g.Dispose(); $b.Save('VspLogo.bmp', [System.Drawing.Imaging.ImageFormat]::Bmp); $b.Dispose(); ^
+        $src.Dispose(); ^
+    }"
 )
 
 set "ISCC_PATH="
