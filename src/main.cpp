@@ -56,30 +56,22 @@ static HICON g_hIconSmall = NULL;
 
 static std::wstring g_pendingInitialArg;
 static bool g_isAppReady = false;
-
-// Track display keep-awake state
 static bool g_isDisplayRequired = false;
 
-// ---------------------------------------------------------------------------
-// Power Management Helpers (Prevent Screen Sleep During Playback)
-// ---------------------------------------------------------------------------
+static void TrimProcessMemory() {
+    SetProcessWorkingSetSize(GetCurrentProcess(), (SIZE_T)-1, (SIZE_T)-1);
+}
 
 static void UpdateDisplayPowerManagement(bool isPlaying) {
     if (g_isDisplayRequired == isPlaying) return;
     g_isDisplayRequired = isPlaying;
 
     if (isPlaying) {
-        // Prevent display from turning off and system from sleeping while playing
         SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED | ES_SYSTEM_REQUIRED);
     } else {
-        // Allow monitor to sleep and system to idle normally when paused or stopped
         SetThreadExecutionState(ES_CONTINUOUS);
     }
 }
-
-// ---------------------------------------------------------------------------
-// Small manual JSON helpers (allocation-light, never throw).
-// ---------------------------------------------------------------------------
 
 static inline size_t SkipWs(const std::string& s, size_t pos) {
     while (pos < s.length() && (s[pos] == ' ' || s[pos] == '\t' || s[pos] == '\r' || s[pos] == '\n')) {
@@ -120,9 +112,6 @@ static bool ParseHex4(const std::string& s, size_t pos, uint32_t& val) {
     return true;
 }
 
-// Parse a JSON string literal. `start` must point at the opening quote.
-// Handles standard escapes including \uXXXX and surrogate pairs.
-// On success fills `out` and sets `endPos` right after the closing quote.
 static bool ParseJsonString(const std::string& json, size_t start, std::string& out, size_t& endPos) {
     out.clear();
     if (start >= json.length() || json[start] != '"') return false;
@@ -154,7 +143,6 @@ static bool ParseJsonString(const std::string& json, size_t start, std::string& 
                 if (!ParseHex4(json, i + 2, cp)) return false;
                 i += 6;
                 if (cp >= 0xD800 && cp <= 0xDBFF) {
-                    // High surrogate: expect a following low surrogate \uDC00-\uDFFF
                     if (i + 1 < json.length() && json[i] == '\\' && json[i + 1] == 'u') {
                         uint32_t lo = 0;
                         if (ParseHex4(json, i + 2, lo) && lo >= 0xDC00 && lo <= 0xDFFF) {
@@ -173,7 +161,6 @@ static bool ParseJsonString(const std::string& json, size_t start, std::string& 
     return false;
 }
 
-// Extract a string field by key ("key":"value") with full escape decoding.
 static std::string ExtractJsonStringField(const std::string& json, const std::string& key) {
     const std::string pattern = "\"" + key + "\"";
     size_t keyPos = 0;
@@ -192,7 +179,6 @@ static std::string ExtractJsonStringField(const std::string& json, const std::st
     return "";
 }
 
-// Extract an array of strings by key ("key":["a","b",...]).
 static std::vector<std::string> ExtractJsonStringArray(const std::string& json, const std::string& key) {
     std::vector<std::string> result;
     const std::string pattern = "\"" + key + "\"";
@@ -232,7 +218,6 @@ static std::vector<std::string> ExtractJsonStringArray(const std::string& json, 
     return result;
 }
 
-// Safely extract a numeric JSON field ("key":123.45). Never throws.
 static bool FindJsonNumber(const std::string& json, const std::string& key, double& out) {
     const std::string pattern = "\"" + key + "\"";
     size_t pos = json.find(pattern);
@@ -258,10 +243,6 @@ static bool FindJsonNumber(const std::string& json, const std::string& key, doub
         return false;
     }
 }
-
-// ---------------------------------------------------------------------------
-// Core helpers
-// ---------------------------------------------------------------------------
 
 void SendWebMessage(const std::string& jsonMsg) {
     if (g_webView) {
@@ -332,10 +313,6 @@ void DispatchInitialFile(const std::wstring& path) {
     SendWebMessage(BuildLoadPlaylistJson(res));
 }
 
-// ---------------------------------------------------------------------------
-// Drag & drop
-// ---------------------------------------------------------------------------
-
 class FileDropTarget : public IDropTarget {
 public:
     ULONG STDMETHODCALLTYPE AddRef() override { return 1; }
@@ -398,10 +375,6 @@ void AttachDropTargetToTree(HWND hWnd) {
         return TRUE;
     }, 0);
 }
-
-// ---------------------------------------------------------------------------
-// Window geometry
-// ---------------------------------------------------------------------------
 
 void SaveCurrentNormalRectIfApplicable() {
     if (!g_isFullscreen && !IsZoomed(g_hMainWnd) && !IsIconic(g_hMainWnd)) {
@@ -495,10 +468,6 @@ void ToggleWindowFullscreen() {
     SendWebMessage("{\"type\":\"fullscreen-state\",\"isFullscreen\":" + std::string(g_isFullscreen ? "true" : "false") + "}");
 }
 
-// ---------------------------------------------------------------------------
-// Native dialogs
-// ---------------------------------------------------------------------------
-
 void OpenNativeFileDialog() {
     wchar_t fileBuf[32768] = { 0 };
     OPENFILENAMEW ofn = { sizeof(OPENFILENAMEW) };
@@ -544,10 +513,6 @@ void OpenNativeSubDialog() {
         }
     }
 }
-
-// ---------------------------------------------------------------------------
-// Web message handling
-// ---------------------------------------------------------------------------
 
 void HandleWebMessage(const std::wstring& msg) {
     std::string s = Utils::Utf16ToUtf8(msg);
@@ -711,12 +676,14 @@ void HandleWebMessage(const std::wstring& msg) {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Window procedure
-// ---------------------------------------------------------------------------
-
 LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
+        case WM_SETFOCUS: {
+            if (g_webViewController) {
+                g_webViewController->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
+            }
+            return 0;
+        }
         case WM_NCACTIVATE: {
             return TRUE;
         }
@@ -846,15 +813,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 if (pStr->find("\"type\":\"thumbnail-ready\"") != std::string::npos) {
                     SendWebMessage(*pStr);
                 } else {
-                    // Update display power management based on pause & playback status
                     if (pStr->find("\"name\":\"pause\"") != std::string::npos) {
                         if (pStr->find("\"value\":false") != std::string::npos) {
-                            UpdateDisplayPowerManagement(true); // Playing: keep monitor awake
+                            UpdateDisplayPowerManagement(true);
                         } else if (pStr->find("\"value\":true") != std::string::npos) {
-                            UpdateDisplayPowerManagement(false); // Paused: allow monitor sleep
+                            UpdateDisplayPowerManagement(false);
                         }
                     } else if (pStr->find("\"type\":\"end-file\"") != std::string::npos) {
-                        UpdateDisplayPowerManagement(false); // File ended: allow monitor sleep
+                        UpdateDisplayPowerManagement(false);
                     }
 
                     SendWebMessage("{\"type\":\"mpv-event\",\"data\":" + *pStr + "}");
@@ -864,7 +830,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             return 0;
         }
         case WM_DESTROY: {
-            // Restore default OS power-management behavior on exit
             UpdateDisplayPowerManagement(false);
 
             RevokeDragDrop(hWnd);
@@ -899,10 +864,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     return DefWindowProcW(hWnd, msg, wParam, lParam);
 }
 
-// ---------------------------------------------------------------------------
-// WebView2 bootstrap
-// ---------------------------------------------------------------------------
-
 void InitWebView(HWND hWnd) {
     PWSTR localAppData = NULL;
     std::wstring userDataPath;
@@ -916,7 +877,18 @@ void InitWebView(HWND hWnd) {
 
     LPCWSTR pUserData = userDataPath.empty() ? nullptr : userDataPath.c_str();
 
-    CreateCoreWebView2EnvironmentWithOptions(nullptr, pUserData, nullptr,
+    auto options = Microsoft::WRL::Make<CoreWebView2EnvironmentOptions>();
+    if (options) {
+        options->put_AdditionalBrowserArguments(
+            L"--disable-background-networking "
+            L"--disable-component-update "
+            L"--disable-features=Translate,OptimizationHints,MediaRouter,DialLocalDiscovery,AudioServiceOutOfProcess "
+            L"--disable-audio "
+            L"--renderer-process-limit=1"
+        );
+    }
+
+    CreateCoreWebView2EnvironmentWithOptions(nullptr, pUserData, options.Get(),
         Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
             [hWnd](HRESULT hr, ICoreWebView2Environment* env) -> HRESULT {
                 if (FAILED(hr) || !env) {
@@ -979,6 +951,11 @@ void InitWebView(HWND hWnd) {
                                         ShowWindow(g_hMainWnd, SW_SHOW);
                                         UpdateWindow(g_hMainWnd);
                                         SetForegroundWindow(g_hMainWnd);
+                                        SetFocus(g_hMainWnd);
+                                        if (g_webViewController) {
+                                            g_webViewController->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
+                                        }
+                                        SetTimer(g_hMainWnd, 1001, 1200, NULL);
                                         return S_OK;
                                     }).Get(), &navToken);
 
@@ -1003,10 +980,6 @@ void InitWebView(HWND hWnd) {
                 return S_OK;
             }).Get());
 }
-
-// ---------------------------------------------------------------------------
-// Entry point
-// ---------------------------------------------------------------------------
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR pCmdLine, int) {
     HRESULT hrOle = OleInitialize(NULL);
@@ -1077,6 +1050,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR pCmdLine, int) {
     wc.lpfnWndProc = WndProc;
     wc.hInstance = hInstance;
     wc.lpszClassName = WINDOW_CLASS_NAME;
+    wc.hIcon = LoadIconW(hInstance, MAKEINTRESOURCEW(101));
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
     wc.hbrBackground = static_cast<HBRUSH>(GetStockObject(BLACK_BRUSH));
     RegisterClassExW(&wc);

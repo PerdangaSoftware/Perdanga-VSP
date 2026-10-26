@@ -1,4 +1,3 @@
-// utils.h — shared helpers for the Perdanga VSP host application.
 #pragma once
 
 #include <windows.h>
@@ -41,10 +40,6 @@ inline std::wstring Utf8ToUtf16(const std::string& str) {
     return wstrTo;
 }
 
-// Escape a string for embedding into a JSON string literal.
-// FIX: \uXXXX escapes MUST be padded to exactly 4 hex digits. The previous
-// version emitted e.g. "\u1" for control char 0x01, which is invalid JSON —
-// PostWebMessageAsJson then silently drops the whole message.
 inline std::string EscapeJson(const std::string& s) {
     std::string out;
     out.reserve(s.size() + 8);
@@ -141,7 +136,6 @@ inline PlaylistResult BuildPlaylistData(const std::vector<std::wstring>& inputPa
     int targetIdx = 0;
 
     if (mediaFiles.size() == 1) {
-        // Single file: build the playlist from all media siblings in the folder
         std::filesystem::path target(mediaFiles[0]);
         std::filesystem::path parentDir = target.parent_path();
         std::vector<std::wstring> siblingFiles;
@@ -188,4 +182,4 @@ inline std::string GetScreenshotPath(const std::string& filename) {
     return filename;
 }
 
-} // namespace Utils
+} 

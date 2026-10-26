@@ -36,7 +36,6 @@
                 App.Tracks.cycleSub(e.deltaY > 0 ? 1 : -1);
             }, { passive: false });
 
-            // Volume controls
             el.volumeWrap.addEventListener('wheel', (e) => {
                 e.preventDefault();
                 state.isDraggingVolume = true;
@@ -74,7 +73,6 @@
                 App.OSD.show('VOLUME', `${Math.round(newVol * 100)}%`);
             });
 
-            // Speed controls
             el.speedWrap.addEventListener('wheel', (e) => {
                 e.preventDefault();
                 const step = e.shiftKey ? 0.25 : 0.05;
@@ -86,7 +84,6 @@
                 App.Tracks.updatePlaybackSpeed(1.0);
             });
 
-            // Context menu setup
             window.addEventListener('contextmenu', App.Tracks.openContextMenu);
             el.contextMenu.addEventListener('wheel', (e) => e.stopPropagation());
             document.addEventListener('click', (e) => {

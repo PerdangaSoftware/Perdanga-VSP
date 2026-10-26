@@ -1,10 +1,8 @@
-// ui/state.js
 (function () {
     'use strict';
 
     window.App = window.App || {};
 
-    // Cached DOM elements
     App.Elements = {
         playerContainer: document.getElementById('playerContainer'),
         videoClickSurface: document.getElementById('videoClickSurface'),
@@ -16,7 +14,6 @@
         mainLogo: document.getElementById('mainLogo'),
         audioLogo: document.getElementById('audioLogo'),
 
-        // Banners & OSD
         nowPlayingBanner: document.getElementById('nowPlayingBanner'),
         npFilename: document.getElementById('npFilename'),
         npPlaylistInfo: document.getElementById('npPlaylistInfo'),
@@ -28,7 +25,6 @@
         seekArrows: document.getElementById('seekArrows'),
         seekText: document.getElementById('seekText'),
 
-        // Panels
         playlistPanel: document.getElementById('playlistPanel'),
         playlistItemsContainer: document.getElementById('playlistItems'),
         closePlaylistBtn: document.getElementById('closePlaylistBtn'),
@@ -41,7 +37,6 @@
         navTogglesDivider: document.getElementById('navTogglesDivider'),
         navTogglesSeparator: document.getElementById('navTogglesSeparator'),
 
-        // Playback controls
         prevBtn: document.getElementById('prevBtn'),
         nextBtn: document.getElementById('nextBtn'),
         playBtn: document.getElementById('playBtn'),
@@ -51,7 +46,6 @@
         loopAllIcon: document.getElementById('loopAllIcon'),
         loopOneIcon: document.getElementById('loopOneIcon'),
 
-        // Timeline
         progressWrapper: document.getElementById('progressWrapper'),
         progressBar: document.getElementById('progressBar'),
         markersContainer: document.getElementById('markersContainer'),
@@ -63,7 +57,6 @@
         thumbImg: document.getElementById('thumbImg'),
         thumbText: document.getElementById('thumbText'),
 
-        // Volume & Speed
         volumeWrap: document.getElementById('volumeWrap'),
         volumeSlider: document.getElementById('volumeSlider'),
         muteBtn: document.getElementById('muteBtn'),
@@ -74,7 +67,6 @@
         speedLabel: document.getElementById('speedLabel'),
         fullscreenBtn: document.getElementById('fullscreenBtn'),
 
-        // Track controls
         audioSwitchBtn: document.getElementById('audioSwitchBtn'),
         subSwitchBtn: document.getElementById('subSwitchBtn'),
         audioSwitchWrap: document.getElementById('audioSwitchWrap'),
@@ -83,13 +75,11 @@
         audioTrackCount: document.getElementById('audioTrackCount'),
         subTrackCount: document.getElementById('subTrackCount'),
 
-        // Context Menu
         contextMenu: document.getElementById('contextMenu'),
         contextAudioList: document.getElementById('contextAudioList'),
         contextSubList: document.getElementById('contextSubList'),
         ctxLoadSub: document.getElementById('ctxLoadSub'),
 
-        // Settings Modal
         settingsBtn: document.getElementById('settingsBtn'),
         settingsModal: document.getElementById('settingsModal'),
         closeSettingsBtn: document.getElementById('closeSettingsBtn'),
@@ -99,24 +89,25 @@
         subPosSlider: document.getElementById('subPosSlider'),
         glowToggle: document.getElementById('glowToggle'),
         chaptersToggle: document.getElementById('chaptersToggle'),
+        arrowSeekTimelineToggle: document.getElementById('arrowSeekTimelineToggle'),
         timelineOpacitySlider: document.getElementById('timelineOpacitySlider'),
         timelineBlurSlider: document.getElementById('timelineBlurSlider'),
 
-        // Hotkeys Modal
         openHotkeysBtn: document.getElementById('openHotkeysBtn'),
         hotkeysModal: document.getElementById('hotkeysModal'),
         closeHotkeysBtn: document.getElementById('closeHotkeysBtn')
     };
 
-    // Central state
     App.State = {
         currentFilePath: '',
         isVideoLoaded: false,
         isAudioMode: false,
         isPaused: true,
         chaptersEnabled: true,
+        arrowSeekTimelineEnabled: true,
+        arrowSeekGraceUntil: 0,
         userPlaybackRate: 1.0,
-        loopMode: 0, // 0 = Off, 1 = Playlist, 2 = Single File
+        loopMode: 0,
 
         playlist: [],
         playlistIndex: 0,
@@ -134,7 +125,6 @@
 
         pendingSubPath: null,
 
-        // Timeline and Scrubbing
         isMouseDownOnTimeline: false,
         isDraggingTimeline: false,
         mouseDownClientX: 0,
@@ -168,14 +158,16 @@
         surfaceClickTimer: null,
         lastVolume: 1.0,
 
-        // Dual Thumbnail Engine State
         isNativeVideoThumbSupported: false,
         lastThumbVideoSrc: '',
+        pendingThumbVideoSeek: null,
         thumbCache: new Map(),
-        THUMB_CACHE_LIMIT: 64,
+        THUMB_CACHE_LIMIT: 256,
         lastThumbRequestTime: 0,
+        lastRequestedSec: -1,
+        lastDisplayedThumbTime: -1,
+        currentHoverSec: -1,
 
-        // Geometry Cache
         cachedProgressRect: null
     };
 })();

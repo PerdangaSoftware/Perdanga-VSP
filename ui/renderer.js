@@ -1,4 +1,3 @@
-// ui/renderer.js
 (function () {
     'use strict';
 
@@ -150,7 +149,6 @@
             el.loadSubBtn.addEventListener('click', openSubAction);
             el.ctxLoadSub.addEventListener('click', openSubAction);
 
-            // Native load-playlist hook
             window.electronAPI.onLoadPlaylist((result) => {
                 if (result && result.playlist.length > 0) {
                     state.playlist = result.playlist;
@@ -193,7 +191,6 @@
                 el.playerContainer.classList.remove('drag-active');
             });
 
-            // MPV Dispatcher
             window.mpvAPI.onEvent((data) => {
                 if (!data) return;
 
@@ -236,7 +233,13 @@
                             el.pauseIcon.style.display = state.isPaused ? 'none' : 'block';
                             if (state.isPaused) el.pulseRing.style.display = 'none';
                             else if (state.isAudioMode) el.pulseRing.style.display = 'block';
-                            App.OSD.resetUIHider();
+
+                            if (Date.now() < state.arrowSeekGraceUntil && state.arrowSeekTimelineEnabled === false) {
+                                return;
+                            }
+                            if (!state.isAccumulatingSeek || state.arrowSeekTimelineEnabled !== false) {
+                                App.OSD.resetUIHider();
+                            }
                             break;
                         case 'track-list':
                             try {
@@ -365,6 +368,8 @@
                     if (state.isVideoPlayingIntent) {
                         window.mpvAPI.setProperty('pause', false);
                     }
+
+                    window.mpvAPI.requestThumbnail(0);
                 }
             });
         },
@@ -405,7 +410,6 @@
         }
     };
 
-    // Application bootstrap
     async function init() {
         App.Main.initWindowControls();
         App.Settings.load();

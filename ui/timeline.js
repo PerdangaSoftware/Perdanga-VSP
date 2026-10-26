@@ -1,4 +1,3 @@
-// ui/timeline.js
 (function () {
     'use strict';
 
@@ -48,7 +47,7 @@
             window.addEventListener('mouseup', (e) => {
                 if (!state.isMouseDownOnTimeline) return;
 
-                const time = App.Timeline.getTimeFromMouseEvent(e);
+                let time = App.Timeline.getTimeFromMouseEvent(e);
 
                 if (state.isDraggingTimeline) {
                     state.isDraggingTimeline = false;
@@ -64,6 +63,23 @@
                 state.isMouseDownOnTimeline = false;
             });
 
+            el.timelineTooltip.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const targetTime = state.currentHoverSec >= 0 ? state.currentHoverSec : state.lastDisplayedThumbTime;
+                if (targetTime >= 0) {
+                    App.Timeline.performSeek(targetTime, true);
+                    if (state.isVideoPlayingIntent) {
+                        window.mpvAPI.setProperty('pause', false);
+                    }
+                }
+            });
+
+            el.progressWrapper.addEventListener('mouseenter', (e) => {
+                if (!state.isVideoLoaded || !state.mediaDuration) return;
+                App.Timeline.updateRect();
+                App.Timeline.handleHoverAt(e.clientX);
+            });
+
             el.progressWrapper.addEventListener('mousemove', (e) => {
                 if (!state.isVideoLoaded || !state.mediaDuration) return;
                 if (hoverRafPending) return;
@@ -72,48 +88,55 @@
 
                 requestAnimationFrame(() => {
                     hoverRafPending = false;
-                    const hoverTime = App.Timeline.getTimeFromMouseEvent({ clientX });
-                    if (isNaN(hoverTime)) return;
-
-                    let hoverChapterName = '';
-                    if (state.chaptersEnabled && state.mediaChapters.length > 0) {
-                        let hoverIdx = -1;
-                        for (let i = state.mediaChapters.length - 1; i >= 0; i--) {
-                            if (state.mediaChapters[i].time <= hoverTime) {
-                                hoverIdx = i;
-                                break;
-                            }
-                        }
-                        if (hoverIdx !== -1) {
-                            const title = App.Playlist.getChapterTitle(state.mediaChapters[hoverIdx], hoverIdx);
-                            hoverChapterName = `<br><span style="color: var(--accent); font-weight: 700;">${App.Utils.escapeHTML(title)}</span>`;
-                        }
-                    }
-
-                    const frameNumber = state.currentFps > 0 ? Math.floor(hoverTime * state.currentFps) : 0;
-                    const newHTML = `${App.Utils.formatDetailedTime(hoverTime)} | Frame: ${frameNumber}${hoverChapterName}`;
-                    if (state.lastTooltipHTML !== newHTML) {
-                        el.thumbText.innerHTML = newHTML;
-                        state.lastTooltipHTML = newHTML;
-                    }
-
-                    el.timelineTooltip.style.display = 'flex';
-                    const tooltipHalf = 110;
-                    const clampedX = Math.max(tooltipHalf, Math.min(window.innerWidth - tooltipHalf, clientX));
-                    el.timelineTooltip.style.left = `${clampedX}px`;
-
-                    if (state.isAudioMode) {
-                        el.thumbContainer.classList.remove('has-frame');
-                        return;
-                    }
-
-                    App.Thumbnails.request(hoverTime);
+                    App.Timeline.handleHoverAt(clientX);
                 });
             }, { passive: true });
 
             el.progressWrapper.addEventListener('mouseleave', () => {
                 el.timelineTooltip.style.display = 'none';
+                state.currentHoverSec = -1;
             });
+        },
+
+        handleHoverAt(clientX) {
+            const el = App.Elements;
+            const state = App.State;
+            const sec = App.Timeline.getTimeFromMouseEvent({ clientX });
+            if (isNaN(sec)) return;
+
+            let hoverChapterName = '';
+            if (state.chaptersEnabled && state.mediaChapters.length > 0) {
+                let hoverIdx = -1;
+                for (let i = state.mediaChapters.length - 1; i >= 0; i--) {
+                    if (state.mediaChapters[i].time <= sec) {
+                        hoverIdx = i;
+                        break;
+                    }
+                }
+                if (hoverIdx !== -1) {
+                    const title = App.Playlist.getChapterTitle(state.mediaChapters[hoverIdx], hoverIdx);
+                    hoverChapterName = `<br><span style="color: var(--accent); font-weight: 700;">${App.Utils.escapeHTML(title)}</span>`;
+                }
+            }
+
+            const frameNumber = state.currentFps > 0 ? Math.round(sec * state.currentFps) : 0;
+            const newHTML = `${App.Utils.formatDetailedTime(sec)} | Frame: ${frameNumber}${hoverChapterName}`;
+            if (state.lastTooltipHTML !== newHTML) {
+                el.thumbText.innerHTML = newHTML;
+                state.lastTooltipHTML = newHTML;
+            }
+
+            el.timelineTooltip.style.display = 'flex';
+            const tooltipHalf = 110;
+            const clampedX = Math.max(tooltipHalf, Math.min(window.innerWidth - tooltipHalf, clientX));
+            el.timelineTooltip.style.left = `${clampedX}px`;
+
+            if (state.isAudioMode) {
+                el.thumbContainer.classList.remove('has-frame');
+                return;
+            }
+
+            App.Thumbnails.request(sec);
         },
 
         updateRect() {
@@ -134,14 +157,18 @@
             if (!state.mediaDuration) return 0;
             if (!state.cachedProgressRect) App.Timeline.updateRect();
             const rect = state.cachedProgressRect;
-            const thumbWidth = 18;
-            const clickX = e.clientX - rect.left - (thumbWidth / 2);
-            const trackWidth = rect.width - thumbWidth;
-            let pos = 0;
-            if (trackWidth > 0) {
-                pos = Math.max(0, Math.min(1, clickX / trackWidth));
-            }
-            return pos * state.mediaDuration;
+            if (!rect || rect.width <= 0) return 0;
+
+            const thumbOffset = 6;
+            const availableWidth = rect.width - (thumbOffset * 2);
+            if (availableWidth <= 0) return 0;
+
+            const clickX = e.clientX - rect.left - thumbOffset;
+            const pos = Math.max(0, Math.min(1, clickX / availableWidth));
+            const rawTime = pos * state.mediaDuration;
+            const fps = state.currentFps > 0 ? state.currentFps : 24;
+            const frameTime = Math.round(rawTime * fps) / fps;
+            return Math.max(0, Math.min(state.mediaDuration, frameTime));
         },
 
         performSeek(time, isFinal = false) {
@@ -156,12 +183,12 @@
             state.lastTimeStr = newTimeStr;
 
             if (isFinal) {
-                state.seekLockoutUntil = Date.now() + 300;
+                state.seekLockoutUntil = Date.now() + 200;
                 window.mpvAPI.seek(time, true, true);
             } else if (!scrubThrottle) {
                 window.mpvAPI.seek(time, true, false);
                 scrubThrottle = true;
-                setTimeout(() => { scrubThrottle = false; }, 40);
+                setTimeout(() => { scrubThrottle = false; }, 30);
             }
         },
 
@@ -170,6 +197,14 @@
             const el = App.Elements;
             if (!state.isVideoLoaded) return;
             const duration = state.mediaDuration || 0;
+
+            if (state.arrowSeekTimelineEnabled !== false) {
+                App.OSD.showUI();
+                App.OSD.resetUIHider();
+            } else {
+                state.arrowSeekGraceUntil = Date.now() + 700;
+                App.OSD.hideUI();
+            }
 
             if (state.isAccumulatingSeek && state.seekAccumulator !== 0 && Math.sign(delta) !== Math.sign(state.seekAccumulator)) {
                 state.baseSeekTime = Math.max(0, Math.min(duration, state.baseSeekTime + state.seekAccumulator));
@@ -235,8 +270,12 @@
                 if (state.isVideoPlayingIntent) {
                     window.mpvAPI.setProperty('pause', false);
                 }
-                if (!el.playerContainer.classList.contains('hide-ui')) {
+
+                if (state.arrowSeekTimelineEnabled !== false) {
                     App.OSD.resetUIHider();
+                } else {
+                    state.arrowSeekGraceUntil = Date.now() + 500;
+                    App.OSD.hideUI();
                 }
             }, 450);
         },

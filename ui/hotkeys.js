@@ -3,10 +3,19 @@ window.addEventListener('keydown', (e) => {
     const api = window.PlayerAPI;
     if (!api) return;
 
-    api.resetUIHider();
+    const state = window.App ? window.App.State : null;
+    const isArrow = e.code === 'ArrowLeft' || e.code === 'ArrowRight';
+    const allowWakeOnArrow = !state || state.arrowSeekTimelineEnabled !== false;
+
+    if (e.code !== 'KeyS') {
+        if (!isArrow) {
+            api.resetUIHider();
+        } else if (allowWakeOnArrow) {
+            api.resetUIHider();
+        }
+    }
 
     switch (e.code) {
-        // МГНОВЕННЫЙ ЧИСТЫЙ ВЫХОД ИЗ FULLSCREEN ПО ESC
         case 'Escape':
             if (document.body.classList.contains('fullscreen')) {
                 window.electronAPI.toggleFullscreen();

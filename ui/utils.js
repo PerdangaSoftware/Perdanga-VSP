@@ -1,4 +1,3 @@
-// ui/utils.js
 (function () {
     'use strict';
 
@@ -68,15 +67,23 @@
         saveProgress(time) {
             const state = App.State;
             const now = Date.now();
-            if (state.currentFilePath && time > 1 && now - state.lastSaveTime > 4000) {
+            if (state.currentFilePath && time > 1 && now - state.lastSaveTime > 5000) {
                 if (!state.progressCache) {
                     state.progressCache = JSON.parse(localStorage.getItem('perdangaProgress')) || {};
                 }
                 state.progressCache[state.currentFilePath] = time;
                 const keys = Object.keys(state.progressCache);
                 if (keys.length > 30) delete state.progressCache[keys[0]];
-                localStorage.setItem('perdangaProgress', JSON.stringify(state.progressCache));
                 state.lastSaveTime = now;
+                if (window.requestIdleCallback) {
+                    window.requestIdleCallback(() => {
+                        localStorage.setItem('perdangaProgress', JSON.stringify(state.progressCache));
+                    });
+                } else {
+                    setTimeout(() => {
+                        localStorage.setItem('perdangaProgress', JSON.stringify(state.progressCache));
+                    }, 0);
+                }
             }
         },
 
@@ -109,7 +116,6 @@
                 window.mpvAPI.command(['screenshot-to-file', screenshotPath, 'video']);
                 App.OSD.show('SCREENSHOT', 'Saved to Pictures/Perdanga VSP');
             } catch (err) {
-                console.error(err);
                 App.OSD.show('SCREENSHOT ERROR', 'Failed to capture frame');
             }
         }

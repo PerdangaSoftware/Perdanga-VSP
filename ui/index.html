@@ -87,7 +87,6 @@
             <div id="chaptersItems" class="panel-body"></div>
         </div>
 
-        <!-- Dual Pipeline Tooltip (Native HTML5 Video + Universal MPV Image Frame) -->
         <div id="timelineTooltip">
             <div class="thumb-container" id="thumbContainer">
                 <video id="thumbVideo" muted preload="metadata"></video>
@@ -243,6 +242,13 @@
                             <span class="slider-toggle"></span>
                         </label>
                     </div>
+                    <div class="setting-group row">
+                        <label>Show Timeline on Arrow Seek</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="arrowSeekTimelineToggle" checked>
+                            <span class="slider-toggle"></span>
+                        </label>
+                    </div>
 
                     <hr style="border: 0; border-top: 1px solid var(--glass-border); margin: 5px 0;">
 
@@ -288,7 +294,6 @@
         </div>
     </div>
 
-    <!-- Modular Frontend Pipeline -->
     <script src="bridge.js"></script>
     <script src="state.js"></script>
     <script src="utils.js"></script>

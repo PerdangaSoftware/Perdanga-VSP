@@ -1,66 +1,85 @@
 @echo off
-chcp 65001 >nul
 setlocal enabledelayedexpansion
 
-echo =======================================================
-echo 1. Компиляция приложения (Perdanga VSP)...
-echo =======================================================
-
-:: Завершение процесса, если он запущен
 taskkill /F /IM PerdangaVSP.exe >nul 2>&1
 
-:: Очистка старого кэша
 if exist "build\CMakeCache.txt" del /f /q "build\CMakeCache.txt" >nul 2>&1
 
-:: Сборка приложения
+if not exist "packages\Microsoft.Web.WebView2\build\native\include\WebView2.h" (
+    if not exist "packages\Microsoft.Web.WebView2" mkdir "packages\Microsoft.Web.WebView2"
+    where curl.exe >nul 2>&1
+    if !errorlevel! equ 0 (
+        curl.exe -fSL --retry 3 -A "Mozilla/5.0" "https://globalcdn.nuget.org/packages/microsoft.web.webview2.1.0.2903.40.nupkg" -o "packages\webview2.zip"
+        where tar.exe >nul 2>&1
+        if !errorlevel! equ 0 (
+            tar.exe -xf "packages\webview2.zip" -C "packages\Microsoft.Web.WebView2"
+        ) else (
+            powershell -NoProfile -Command "Expand-Archive -Path 'packages\webview2.zip' -DestinationPath 'packages\Microsoft.Web.WebView2' -Force"
+        )
+        if exist "packages\webview2.zip" del /f /q "packages\webview2.zip"
+    ) else (
+        powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol = 3072 -bor 12288; (New-Object Net.WebClient).DownloadFile('https://globalcdn.nuget.org/packages/microsoft.web.webview2.1.0.2903.40.nupkg', 'packages\webview2.zip'); Expand-Archive -Path 'packages\webview2.zip' -DestinationPath 'packages\Microsoft.Web.WebView2' -Force; Remove-Item -Path 'packages\webview2.zip' -Force"
+    )
+)
+
+del /f /q "build\*.dll" >nul 2>&1
+del /f /q "build\*.pdb" >nul 2>&1
+del /f /q "build\*.ilk" >nul 2>&1
+del /f /q "build\*.exp" >nul 2>&1
+del /f /q "build\*.lib" >nul 2>&1
+
 cmake -B build -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release
 if %errorlevel% neq 0 (
-    echo.
-    echo [ОШИБКА] Сбой конфигурации CMake.
+    echo [ERROR] CMake configuration failed.
     pause
     exit /b 1
 )
 
 cmake --build build --config Release
 if %errorlevel% neq 0 (
-    echo.
-    echo [ОШИБКА] Сбой компиляции приложения.
+    echo [ERROR] Application compilation failed.
     pause
     exit /b 1
 )
 
-:: Копирование библиотек DLL и папки UI в build
-if exist "libmpv\mpv.dll" xcopy /Y "libmpv\mpv.dll" "build\" >nul
-if exist "libmpv\lib\mpv.dll" xcopy /Y "libmpv\lib\mpv.dll" "build\" >nul
-if exist "libmpv\libmpv-2.dll" xcopy /Y "libmpv\libmpv-2.dll" "build\" >nul
-if exist "libmpv\lib\libmpv-2.dll" xcopy /Y "libmpv\lib\libmpv-2.dll" "build\" >nul
+del /f /q "build\*.pdb" >nul 2>&1
+del /f /q "build\*.ilk" >nul 2>&1
+del /f /q "build\*.exp" >nul 2>&1
+del /f /q "build\*.lib" >nul 2>&1
+del /f /q "build\*.dll" >nul 2>&1
+
+if exist "libmpv\mpv.dll" (
+    copy /Y "libmpv\mpv.dll" "build\mpv.dll" >nul
+) else if exist "libmpv\lib\mpv.dll" (
+    copy /Y "libmpv\lib\mpv.dll" "build\mpv.dll" >nul
+) else if exist "libmpv\libmpv-2.dll" (
+    copy /Y "libmpv\libmpv-2.dll" "build\mpv.dll" >nul
+) else if exist "libmpv\lib\libmpv-2.dll" (
+    copy /Y "libmpv\lib\libmpv-2.dll" "build\mpv.dll" >nul
+)
 
 if not exist "build\ui" mkdir "build\ui"
 xcopy /E /I /Y "ui" "build\ui" >nul
 
+del /f /q /s "build\ui\*.txt" >nul 2>&1
+del /f /q /s "build\ui\*.map" >nul 2>&1
+del /f /q /s "build\ui\*.bak" >nul 2>&1
+del /f /q /s "build\ui\*.md" >nul 2>&1
+
 if not exist "build\PerdangaVSP.exe" (
-    echo.
-    echo [ОШИБКА] build\PerdangaVSP.exe не найден.
+    echo [ERROR] build\PerdangaVSP.exe not found.
     pause
     exit /b 1
 )
 
-echo.
-echo =======================================================
-echo 2. Подготовка логотипа плеера для установщика...
-echo =======================================================
 if not exist "VspLogo.bmp" (
-    echo Скачивание логотипа VspLogo.png с GitLab...
-    powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; (New-Object Net.WebClient).DownloadFile('https://gitlab.com/perdanga/perdanga-vsp/-/raw/main/Screenshots/VspLogo.png?ref_type=heads', 'VspLogo.png')"
-    
-    echo Создание 55x55 BMP для Inno Setup...
-    powershell -Command "Add-Type -AssemblyName System.Drawing; $src = [System.Drawing.Image]::FromFile('VspLogo.png'); $bmp = New-Object System.Drawing.Bitmap(55, 55); $g = [System.Drawing.Graphics]::FromImage($bmp); $g.Clear([System.Drawing.Color]::White); $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic; $g.DrawImage($src, 0, 0, 55, 55); $g.Dispose(); $src.Dispose(); $bmp.Save('VspLogo.bmp', [System.Drawing.Imaging.ImageFormat]::Bmp); $bmp.Dispose()"
+    powershell -NoProfile -Command "Add-Type -AssemblyName System.Drawing; if (Test-Path 'ui\ico\GreenOrange.ico') { $icon = New-Object System.Drawing.Icon((Resolve-Path 'ui\ico\GreenOrange.ico').Path); $src = $icon.ToBitmap(); $bmp = New-Object System.Drawing.Bitmap(55, 55); $g = [System.Drawing.Graphics]::FromImage($bmp); $g.Clear([System.Drawing.Color]::White); $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic; $g.DrawImage($src, 0, 0, 55, 55); $g.Dispose(); $bmp.Save('VspLogo.bmp', [System.Drawing.Imaging.ImageFormat]::Bmp); $bmp.Dispose(); $src.Dispose(); $icon.Dispose() }"
 )
 
-echo.
-echo =======================================================
-echo 3. Поиск компилятора Inno Setup...
-echo =======================================================
+if not exist "WizardImage.bmp" (
+    powershell -NoProfile -Command "Add-Type -AssemblyName System.Drawing; if (Test-Path 'ui\ico\GreenOrange.ico') { $icon = New-Object System.Drawing.Icon((Resolve-Path 'ui\ico\GreenOrange.ico').Path); $src = $icon.ToBitmap(); $bmp = New-Object System.Drawing.Bitmap(164, 314); $g = [System.Drawing.Graphics]::FromImage($bmp); $g.Clear([System.Drawing.Color]::FromArgb(18, 21, 20)); $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic; $g.DrawImage($src, 18, 93, 128, 128); $g.Dispose(); $bmp.Save('WizardImage.bmp', [System.Drawing.Imaging.ImageFormat]::Bmp); $bmp.Dispose(); $src.Dispose(); $icon.Dispose() }"
+)
+
 set "ISCC_PATH="
 if exist "%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe" set "ISCC_PATH=%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe"
 if exist "%ProgramFiles%\Inno Setup 6\ISCC.exe" set "ISCC_PATH=%ProgramFiles%\Inno Setup 6\ISCC.exe"
@@ -71,28 +90,18 @@ if "!ISCC_PATH!"=="" (
     if !errorlevel! equ 0 (
         set "ISCC_PATH=iscc"
     ) else (
-        echo.
-        echo [ВНИМАНИЕ] Inno Setup 6 не обнаружен на компьютере!
-        echo.
+        echo [ERROR] Inno Setup 6 compiler not found.
         pause
         exit /b 1
     )
 )
 
-echo Найден компилятор: "!ISCC_PATH!"
-echo Создание файла установки...
 "!ISCC_PATH!" "installer.iss"
-
 if %errorlevel% neq 0 (
-    echo.
-    echo [ОШИБКА] Не удалось создать установочный файл.
+    echo [ERROR] Failed to compile installer.
     pause
     exit /b 1
 )
 
-echo.
-echo =======================================================
-echo УСПЕШНО! Готовый инсталлятор создан:
-echo dist\PerdangaVSP_Setup.exe
-echo =======================================================
+echo Installer successfully created in dist\PerdangaVSP_Setup.exe
 pause

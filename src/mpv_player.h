@@ -31,8 +31,8 @@ public:
     mpv_handle* GetHandle() const { return m_mpv; }
     bool IsPaused() const { return m_isPaused.load(std::memory_order_relaxed); }
 
-    // Universal Thumbnail Extraction
     void RequestThumbnail(double time);
+    bool GetVideoDimensions(int& width, int& height) const;
 
 private:
     void EventLoop();
@@ -40,18 +40,18 @@ private:
     std::string NodeToJson(const mpv_node* node);
     void ApplyHighFidelityRenderProfiles();
 
-    // Primary Player
     mpv_handle* m_mpv = nullptr;
     std::thread m_eventThread;
     std::atomic<bool> m_running{ false };
     std::atomic<bool> m_isPaused{ true };
+    std::atomic<int> m_videoWidth{ 0 };
+    std::atomic<int> m_videoHeight{ 0 };
     EventCallback m_eventCallback;
     std::mutex m_cbMutex;
 
     double m_lastReportedTime = -1.0;
     ULONGLONG m_lastTimeReportTick = 0;
 
-    // Background Thumbnail Worker
     mpv_handle* m_thumbMpv = nullptr;
     HWND m_thumbHwnd = NULL;
     std::thread m_thumbThread;

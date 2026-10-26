@@ -1,4 +1,3 @@
-// ui/osd.js
 (function () {
     'use strict';
 
@@ -63,6 +62,10 @@
         resetUIHider(e) {
             const state = App.State;
             const el = App.Elements;
+
+            if (state.arrowSeekTimelineEnabled === false && (state.isAccumulatingSeek || Date.now() < state.arrowSeekGraceUntil)) {
+                return;
+            }
 
             if (e && e.type === 'mousemove') {
                 if (e.clientX === state.lastMouseX && e.clientY === state.lastMouseY) return;

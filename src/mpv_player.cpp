@@ -143,7 +143,6 @@ bool MpvPlayer::Initialize(HWND videoHwnd) {
     ObserveProperty("dwidth");
     ObserveProperty("dheight");
 
-    // Off-Screen Thumbnail Worker window (parked outside the visible desktop)
     m_thumbHwnd = CreateWindowExW(WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE, L"STATIC", L"", WS_POPUP, -4000, -4000, 320, 180, NULL, NULL, GetModuleHandle(NULL), NULL);
     ShowWindow(m_thumbHwnd, SW_SHOWNOACTIVATE);
 
@@ -177,20 +176,15 @@ bool MpvPlayer::Initialize(HWND videoHwnd) {
         mpv_set_option_string(m_thumbMpv, "osc", "no");
         mpv_set_option_string(m_thumbMpv, "osd-bar", "no");
 
-        // FIX: detect thumbnail engine startup failure instead of silently
-        // keeping a non-initialized handle.
         if (mpv_initialize(m_thumbMpv) < 0) {
             mpv_destroy(m_thumbMpv);
             m_thumbMpv = nullptr;
         }
     } else if (m_thumbMpv) {
-        // No host window — the thumbnail engine cannot render, drop it.
         mpv_destroy(m_thumbMpv);
         m_thumbMpv = nullptr;
     }
 
-    // FIX: never throw on temp path problems; namespaced by PID so parallel
-    // processes (e.g. a second user session) never share the same JPEG file.
     std::error_code ec;
     std::filesystem::path tempBase = std::filesystem::temp_directory_path(ec);
     if (ec) {
@@ -213,18 +207,12 @@ void MpvPlayer::Destroy() {
         std::lock_guard<std::mutex> lock(m_thumbMutex);
         m_thumbCv.notify_all();
     }
-    if (m_mpv) {
-        mpv_wakeup(m_mpv);
-    }
-    if (m_thumbMpv) {
-        mpv_wakeup(m_thumbMpv);
-    }
-    if (m_eventThread.joinable()) {
-        m_eventThread.join();
-    }
-    if (m_thumbThread.joinable()) {
-        m_thumbThread.join();
-    }
+    if (m_mpv) mpv_wakeup(m_mpv);
+    if (m_thumbMpv) mpv_wakeup(m_thumbMpv);
+
+    if (m_eventThread.joinable()) m_eventThread.join();
+    if (m_thumbThread.joinable()) m_thumbThread.join();
+
     if (m_thumbMpv) {
         mpv_destroy(m_thumbMpv);
         m_thumbMpv = nullptr;
@@ -237,6 +225,9 @@ void MpvPlayer::Destroy() {
         mpv_destroy(m_mpv);
         m_mpv = nullptr;
     }
+
+    std::error_code ec;
+    std::filesystem::remove(m_tempThumbPath, ec);
 }
 
 void MpvPlayer::SetEventCallback(EventCallback cb) {
@@ -249,7 +240,6 @@ void MpvPlayer::LoadFile(const std::string& filePath) {
     const char* cmd[] = { "loadfile", filePath.c_str(), "replace", NULL };
     mpv_command_async(m_mpv, 0, cmd);
 
-    // Sync file to the thumbnail worker
     if (m_thumbMpv) {
         std::lock_guard<std::mutex> lock(m_thumbMutex);
         m_currentThumbFilePath = filePath;
@@ -264,6 +254,23 @@ void MpvPlayer::RequestThumbnail(double time) {
     m_pendingThumbTime = time;
     m_hasPendingThumbRequest = true;
     m_thumbCv.notify_one();
+}
+
+bool MpvPlayer::GetVideoDimensions(int& width, int& height) const {
+    width = m_videoWidth.load(std::memory_order_relaxed);
+    height = m_videoHeight.load(std::memory_order_relaxed);
+    if (width > 0 && height > 0) return true;
+    if (m_mpv) {
+        int64_t w = 0, h = 0;
+        if (mpv_get_property(m_mpv, "dwidth", MPV_FORMAT_INT64, &w) >= 0 &&
+            mpv_get_property(m_mpv, "dheight", MPV_FORMAT_INT64, &h) >= 0 &&
+            w > 0 && h > 0) {
+            width = static_cast<int>(w);
+            height = static_cast<int>(h);
+            return true;
+        }
+    }
+    return false;
 }
 
 void MpvPlayer::ThumbnailLoop() {
@@ -281,12 +288,10 @@ void MpvPlayer::ThumbnailLoop() {
 
         if (!m_thumbMpv || targetTime < 0) continue;
 
-        // Perform seek on the thumbnail worker
         std::string timeStr = std::to_string(targetTime);
         const char* seekCmd[] = { "seek", timeStr.c_str(), "absolute+keyframes", NULL };
         mpv_command(m_thumbMpv, seekCmd);
 
-        // Wait up to 150ms for the frame to be ready
         int waitCount = 0;
         while (waitCount < 15) {
             mpv_event* ev = mpv_wait_event(m_thumbMpv, 0.01);
@@ -297,7 +302,6 @@ void MpvPlayer::ThumbnailLoop() {
             waitCount++;
         }
 
-        // Capture frame to a temporary JPEG
         const char* ssCmd[] = { "screenshot-to-file", m_tempThumbPath.c_str(), "video", NULL };
         if (mpv_command(m_thumbMpv, ssCmd) >= 0) {
             std::ifstream file(m_tempThumbPath, std::ios::binary);
@@ -328,15 +332,18 @@ void MpvPlayer::Command(const std::vector<std::string>& args) {
 
 void MpvPlayer::Seek(double time, bool absolute, bool exact) {
     if (!m_mpv) return;
-    std::string timeStr = std::to_string(time);
-    std::string mode;
-    if (absolute) {
-        mode = exact ? "absolute+exact" : "absolute+keyframes";
-    } else {
-        mode = exact ? "relative+exact" : "relative+keyframes";
-    }
+    std::ostringstream ss;
+    ss.precision(3);
+    ss << std::fixed << time;
+    std::string timeStr = ss.str();
+    std::string mode = absolute ? (exact ? "absolute+exact" : "absolute+keyframes")
+                                : (exact ? "relative+exact" : "relative+keyframes");
     const char* cmd[] = { "seek", timeStr.c_str(), mode.c_str(), NULL };
     mpv_command_async(m_mpv, 0, cmd);
+    if (IsPaused()) {
+        const char* redrawCmd[] = { "redraw", NULL };
+        mpv_command_async(m_mpv, 0, redrawCmd);
+    }
 }
 
 void MpvPlayer::SetProperty(const std::string& name, const std::string& value) {
@@ -422,6 +429,14 @@ void MpvPlayer::EventLoop() {
                         m_lastReportedTime = curTime;
                         m_lastTimeReportTick = now;
                     }
+                } else if (strcmp(prop->name, "dwidth") == 0) {
+                    if (prop->format == MPV_FORMAT_INT64 && prop->data) {
+                        m_videoWidth.store(static_cast<int>(*static_cast<int64_t*>(prop->data)), std::memory_order_relaxed);
+                    }
+                } else if (strcmp(prop->name, "dheight") == 0) {
+                    if (prop->format == MPV_FORMAT_INT64 && prop->data) {
+                        m_videoHeight.store(static_cast<int>(*static_cast<int64_t*>(prop->data)), std::memory_order_relaxed);
+                    }
                 }
 
                 std::string valStr;
@@ -456,6 +471,13 @@ void MpvPlayer::EventLoop() {
             }
         } else if (event->event_id == MPV_EVENT_FILE_LOADED) {
             m_lastReportedTime = -1.0;
+            int64_t w = 0, h = 0;
+            if (mpv_get_property(m_mpv, "dwidth", MPV_FORMAT_INT64, &w) >= 0) {
+                m_videoWidth.store(static_cast<int>(w), std::memory_order_relaxed);
+            }
+            if (mpv_get_property(m_mpv, "dheight", MPV_FORMAT_INT64, &h) >= 0) {
+                m_videoHeight.store(static_cast<int>(h), std::memory_order_relaxed);
+            }
             jsonStr = "{\"type\":\"file-loaded\"}";
         } else if (event->event_id == MPV_EVENT_END_FILE) {
             mpv_event_end_file* eef = static_cast<mpv_event_end_file*>(event->data);

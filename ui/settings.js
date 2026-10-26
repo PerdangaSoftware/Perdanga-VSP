@@ -1,4 +1,3 @@
-// ui/settings.js
 (function () {
     'use strict';
 
@@ -15,10 +14,13 @@
                 el.subPosSlider,
                 el.glowToggle,
                 el.chaptersToggle,
+                el.arrowSeekTimelineToggle,
                 el.timelineOpacitySlider,
                 el.timelineBlurSlider
             ].forEach(element => {
-                element.addEventListener('input', App.Settings.saveAndApply);
+                if (element) {
+                    element.addEventListener('input', App.Settings.saveAndApply);
+                }
             });
 
             el.settingsBtn.addEventListener('click', (e) => {
@@ -69,6 +71,7 @@
             else document.body.classList.remove('disable-glow');
 
             state.chaptersEnabled = s.chapters !== false;
+            state.arrowSeekTimelineEnabled = s.arrowSeekTimeline !== false;
 
             const iconPath = s.appIcon || 'ico/GreenOrange.ico';
             el.mainLogo.src = iconPath;
@@ -99,6 +102,7 @@
                 glow: false,
                 appIcon: 'ico/GreenOrange.ico',
                 chapters: true,
+                arrowSeekTimeline: true,
                 tlOpacity: '0.85',
                 tlBlur: '24'
             };
@@ -110,6 +114,9 @@
             el.subPosSlider.value = s.pos;
             el.glowToggle.checked = s.glow;
             el.chaptersToggle.checked = s.chapters;
+            if (el.arrowSeekTimelineToggle) {
+                el.arrowSeekTimelineToggle.checked = s.arrowSeekTimeline;
+            }
             el.timelineOpacitySlider.value = s.tlOpacity;
             el.timelineBlurSlider.value = s.tlBlur;
 
@@ -125,6 +132,7 @@
                 pos: el.subPosSlider.value,
                 glow: el.glowToggle.checked,
                 chapters: el.chaptersToggle.checked,
+                arrowSeekTimeline: el.arrowSeekTimelineToggle ? el.arrowSeekTimelineToggle.checked : true,
                 tlOpacity: el.timelineOpacitySlider.value,
                 tlBlur: el.timelineBlurSlider.value
             };
