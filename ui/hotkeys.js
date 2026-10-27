@@ -48,6 +48,14 @@ window.addEventListener('keydown', (e) => {
             if (e.shiftKey) api.skipNextChapter();
             else api.accumulateSeek(5);
             break;
+        case 'ArrowUp':
+            e.preventDefault();
+            api.changeVolume(0.05);
+            break;
+        case 'ArrowDown':
+            e.preventDefault();
+            api.changeVolume(-0.05);
+            break;
         case 'Comma':
             api.changePlaybackSpeed(-0.05);
             break;
@@ -91,6 +99,9 @@ window.addEventListener('keydown', (e) => {
                 api.subPosSlider.value = pos;
                 api.saveAndApplySettings();
                 api.showOSD("SUB POSITION", `${pos}%`);
+            } else {
+                e.preventDefault();
+                api.changeVolume(0.05);
             }
             break;
         case 'Minus':
@@ -107,7 +118,22 @@ window.addEventListener('keydown', (e) => {
                 api.subPosSlider.value = pos;
                 api.saveAndApplySettings();
                 api.showOSD("SUB POSITION", `${pos}%`);
+            } else {
+                e.preventDefault();
+                api.changeVolume(-0.05);
             }
+            break;
+        case 'Digit0':
+            e.preventDefault();
+            api.changeVolume(0.05);
+            break;
+        case 'Digit9':
+            e.preventDefault();
+            api.changeVolume(-0.05);
+            break;
+        case 'KeyM':
+            e.preventDefault();
+            api.toggleMute();
             break;
     }
 });

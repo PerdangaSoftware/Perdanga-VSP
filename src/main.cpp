@@ -263,6 +263,12 @@ static std::string BuildLoadPlaylistJson(const Utils::PlaylistResult& res) {
     } else {
         json += ",\"subPath\":null";
     }
+    if (!res.audioPath.empty()) {
+        json += ",\"audioPath\":\"" + Utils::EscapeJson(res.audioPath) + "\"";
+    } else {
+        json += ",\"audioPath\":null";
+    }
+    json += ",\"isAudioOnlyDrop\":" + std::string(res.isAudioOnlyDrop ? "true" : "false");
     json += "}";
     return json;
 }
@@ -502,14 +508,37 @@ void OpenNativeSubDialog() {
     ofn.hwndOwner = g_hMainWnd;
     ofn.lpstrFile = fileBuf;
     ofn.nMaxFile = MAX_PATH;
-    ofn.lpstrFilter = L"Subtitles (*.srt;*.vtt;*.ass)\0*.srt;*.vtt;*.ass\0All Files (*.*)\0*.*\0";
+    ofn.lpstrFilter = L"Subtitles (*.srt;*.vtt;*.ass;*.ssa)\0*.srt;*.vtt;*.ass;*.ssa\0All Files (*.*)\0*.*\0";
     ofn.nFilterIndex = 1;
     ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_EXPLORER;
 
     if (GetOpenFileNameW(&ofn)) {
+        std::filesystem::path p(fileBuf);
+        std::string filename = Utils::Utf16ToUtf8(p.stem().wstring());
         std::string path = Utils::Utf16ToUtf8(fileBuf);
         if (g_mpv) {
-            g_mpv->Command({ "sub-add", path, "auto" });
+            g_mpv->SetProperty("sub-visibility", "yes");
+            g_mpv->Command({ "sub-add", path, "select", filename });
+        }
+    }
+}
+
+void OpenNativeAudioDialog() {
+    wchar_t fileBuf[MAX_PATH] = { 0 };
+    OPENFILENAMEW ofn = { sizeof(OPENFILENAMEW) };
+    ofn.hwndOwner = g_hMainWnd;
+    ofn.lpstrFile = fileBuf;
+    ofn.nMaxFile = MAX_PATH;
+    ofn.lpstrFilter = L"Audio Files (*.mka;*.mp3;*.wav;*.flac;*.ogg;*.m4a;*.aac;*.opus;*.ac3;*.dts)\0*.mka;*.mp3;*.wav;*.flac;*.ogg;*.m4a;*.aac;*.opus;*.ac3;*.dts\0All Files (*.*)\0*.*\0";
+    ofn.nFilterIndex = 1;
+    ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_EXPLORER;
+
+    if (GetOpenFileNameW(&ofn)) {
+        std::filesystem::path p(fileBuf);
+        std::string filename = Utils::Utf16ToUtf8(p.stem().wstring());
+        std::string path = Utils::Utf16ToUtf8(fileBuf);
+        if (g_mpv) {
+            g_mpv->Command({ "audio-add", path, "select", filename });
         }
     }
 }
@@ -573,6 +602,8 @@ void HandleWebMessage(const std::wstring& msg) {
         OpenNativeFileDialog();
     } else if (type == "open-sub-dialog") {
         OpenNativeSubDialog();
+    } else if (type == "open-audio-dialog") {
+        OpenNativeAudioDialog();
     } else if (type == "mpv-load") {
         std::string path = ExtractJsonStringField(s, "path");
         if (g_mpv && !path.empty()) {

@@ -57,8 +57,14 @@
         thumbImg: document.getElementById('thumbImg'),
         thumbText: document.getElementById('thumbText'),
 
+        mpvVolumeOsd: document.getElementById('mpvVolumeOsd'),
+        vspVolIcon: document.getElementById('vspVolIcon'),
+        vspVolMuteIcon: document.getElementById('vspVolMuteIcon'),
+        vspVolFill: document.getElementById('vspVolFill'),
+        vspVolText: document.getElementById('vspVolText'),
+
         volumeWrap: document.getElementById('volumeWrap'),
-        volumeSlider: document.getElementById('volumeSlider'),
+        volBoostBadge: document.getElementById('volBoostBadge'),
         muteBtn: document.getElementById('muteBtn'),
         volUpIcon: document.getElementById('volUpIcon'),
         volMuteIcon: document.getElementById('volMuteIcon'),
@@ -71,12 +77,14 @@
         subSwitchBtn: document.getElementById('subSwitchBtn'),
         audioSwitchWrap: document.getElementById('audioSwitchWrap'),
         subSwitchWrap: document.getElementById('subSwitchWrap'),
+        loadAudioBtn: document.getElementById('loadAudioBtn'),
         loadSubBtn: document.getElementById('loadSubBtn'),
         audioTrackCount: document.getElementById('audioTrackCount'),
         subTrackCount: document.getElementById('subTrackCount'),
 
         contextMenu: document.getElementById('contextMenu'),
         contextAudioList: document.getElementById('contextAudioList'),
+        ctxLoadAudio: document.getElementById('ctxLoadAudio'),
         contextSubList: document.getElementById('contextSubList'),
         ctxLoadSub: document.getElementById('ctxLoadSub'),
 
@@ -124,6 +132,7 @@
         currentFps: 24,
 
         pendingSubPath: null,
+        pendingAudioPath: null,
 
         isMouseDownOnTimeline: false,
         isDraggingTimeline: false,
@@ -156,6 +165,7 @@
         lastTimeStr: '',
         lastProgressBarValue: -1,
         surfaceClickTimer: null,
+        currentVolume: 1.0,
         lastVolume: 1.0,
 
         isNativeVideoThumbSupported: false,

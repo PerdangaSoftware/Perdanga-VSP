@@ -38,39 +38,28 @@
 
             el.volumeWrap.addEventListener('wheel', (e) => {
                 e.preventDefault();
-                state.isDraggingVolume = true;
-                let vol = parseFloat(el.volumeSlider.value) + (e.deltaY < 0 ? 0.05 : -0.05);
-                vol = Math.max(0, Math.min(1, Math.round(vol * 100) / 100));
-                el.volumeSlider.value = vol;
+                let curVol = (state.currentVolume !== undefined && state.currentVolume !== null) ? state.currentVolume : 1.0;
+                let vol = curVol + (e.deltaY < 0 ? 0.05 : -0.05);
+                vol = Math.max(0, Math.min(1.5, Math.round(vol * 100) / 100));
+                state.currentVolume = vol;
                 if (vol > 0) state.lastVolume = vol;
                 window.mpvAPI.setProperty('volume', vol * 100);
                 App.Tracks.updateVolumeUI();
-                App.OSD.show('VOLUME', `${Math.round(vol * 100)}%`);
-                setTimeout(() => { state.isDraggingVolume = false; }, 80);
+                App.OSD.showVolumeBar(vol);
             }, { passive: false });
 
-            el.volumeSlider.addEventListener('mousedown', () => { state.isDraggingVolume = true; });
-            el.volumeSlider.addEventListener('input', () => {
-                const vol = parseFloat(el.volumeSlider.value);
-                if (vol > 0) state.lastVolume = vol;
-                window.mpvAPI.setProperty('volume', vol * 100);
-                App.Tracks.updateVolumeUI();
-                App.OSD.show('VOLUME', `${Math.round(vol * 100)}%`);
-            });
-            window.addEventListener('mouseup', () => { state.isDraggingVolume = false; });
-
             el.muteBtn.addEventListener('click', () => {
-                const cur = parseFloat(el.volumeSlider.value);
-                if (cur > 0) {
-                    state.lastVolume = cur;
-                    el.volumeSlider.value = 0;
+                let curVol = (state.currentVolume !== undefined && state.currentVolume !== null) ? state.currentVolume : 1.0;
+                if (curVol > 0) {
+                    state.lastVolume = curVol;
+                    state.currentVolume = 0;
                 } else {
-                    el.volumeSlider.value = state.lastVolume || 1;
+                    state.currentVolume = state.lastVolume || 1.0;
                 }
-                const newVol = parseFloat(el.volumeSlider.value);
+                const newVol = state.currentVolume;
                 window.mpvAPI.setProperty('volume', newVol * 100);
                 App.Tracks.updateVolumeUI();
-                App.OSD.show('VOLUME', `${Math.round(newVol * 100)}%`);
+                App.OSD.showVolumeBar(newVol, newVol === 0);
             });
 
             el.speedWrap.addEventListener('wheel', (e) => {
@@ -93,15 +82,22 @@
 
         updateVolumeUI() {
             const el = App.Elements;
-            const vol = parseFloat(el.volumeSlider.value);
-            const pct = Math.max(0, Math.min(100, vol * 100));
-            el.volumeSlider.style.setProperty('--vol-pct', `${pct}%`);
-            if (vol === 0) {
+            const state = App.State;
+            const realVol = (state.currentVolume !== undefined && state.currentVolume !== null) ? state.currentVolume : 1.0;
+            if (realVol === 0) {
                 el.volUpIcon.style.display = 'none';
                 el.volMuteIcon.style.display = 'block';
             } else {
                 el.volUpIcon.style.display = 'block';
                 el.volMuteIcon.style.display = 'none';
+            }
+            if (el.volBoostBadge) {
+                if (realVol > 1.0) {
+                    el.volBoostBadge.textContent = `${Math.round(realVol * 100)}%`;
+                    el.volBoostBadge.style.display = 'inline-block';
+                } else {
+                    el.volBoostBadge.style.display = 'none';
+                }
             }
         },
 
@@ -117,12 +113,25 @@
         },
 
         getDetailedTrackLabel(track) {
+            let titleStr = track.title;
+            if ((!titleStr || (track.codec && titleStr.toLowerCase() === track.codec.toLowerCase())) && track['external-filename']) {
+                const raw = track['external-filename'];
+                const slashIdx = Math.max(raw.lastIndexOf('/'), raw.lastIndexOf('\\'));
+                const rawName = slashIdx >= 0 ? raw.substring(slashIdx + 1) : raw;
+                const lastDot = rawName.lastIndexOf('.');
+                titleStr = lastDot > 0 ? rawName.substring(0, lastDot) : rawName;
+            }
+            if (!titleStr) {
+                titleStr = `${track.type === 'audio' ? 'Audio' : 'Subtitle'} Track ${track.id}`;
+            }
             const lang = (track.lang && track.lang !== 'und') ? track.lang.toUpperCase() : '';
-            const titleStr = track.title ? track.title : `${track.type === 'audio' ? 'Audio' : 'Subtitle'} Track ${track.id}`;
             const mainLabel = lang ? `${lang} - ${titleStr}` : titleStr;
 
             const codec = track.codec ? track.codec.toUpperCase() : '';
             const extra = [];
+            if (track.external) {
+                extra.push('External');
+            }
             if (track.type === 'audio') {
                 if (track['demux-channel-count'] === 1) extra.push('Mono');
                 else if (track['demux-channel-count'] === 2) extra.push('Stereo');
@@ -142,9 +151,14 @@
                 ? `${state.audioStreams.findIndex(t => t.id === state.currentAudioTrack) + 1}/${state.audioStreams.length}`
                 : '0/0';
 
-            if (state.currentSubTrack === 'off') el.subTrackCount.textContent = 'Off';
-            else if (state.currentSubTrack === 'external') el.subTrackCount.textContent = `${state.subStreams.length + 1}/${state.subStreams.length + 1} (Ext)`;
-            else el.subTrackCount.textContent = `${state.subStreams.findIndex(t => t.id === state.currentSubTrack) + 1}/${state.subStreams.length}`;
+            if (state.currentSubTrack === 'off') {
+                el.subTrackCount.textContent = 'Off';
+            } else {
+                const idx = state.subStreams.findIndex(t => t.id === state.currentSubTrack);
+                el.subTrackCount.textContent = idx >= 0
+                    ? `${idx + 1}/${state.subStreams.length}`
+                    : (state.subStreams.length > 0 ? `1/${state.subStreams.length}` : 'Off');
+            }
         },
 
         setAudioTrack(trackId) {
@@ -159,9 +173,8 @@
             state.currentSubTrack = trackId;
             if (trackId === 'off') {
                 window.mpvAPI.setProperty('sid', 'no');
-            } else if (trackId === 'external') {
-                if (state.externalSubId) window.mpvAPI.setProperty('sid', state.externalSubId);
             } else {
+                window.mpvAPI.setProperty('sub-visibility', 'yes');
                 window.mpvAPI.setProperty('sid', trackId);
             }
             App.Tracks.updateTrackCounters();
@@ -186,7 +199,6 @@
                 const details = App.Tracks.getDetailedTrackLabel(s);
                 subOptions.push({ id: s.id, main: details.mainLabel, sub: details.subLabel });
             });
-            if (state.externalSubId) subOptions.push({ id: 'external', main: 'External File Loaded', sub: 'Custom Subtitle Track' });
 
             if (subOptions.length <= 1) return App.OSD.show('INFO', 'No subtitle tracks available');
             const currentIdx = subOptions.findIndex(o => o.id == state.currentSubTrack);
@@ -195,6 +207,25 @@
 
             App.Tracks.setSubtitle(nextOpt.id);
             App.OSD.show('SUBTITLE', nextOpt.main, nextOpt.sub);
+        },
+
+        loadExternalSubtitle(filePath) {
+            if (!filePath) return;
+            const fileName = App.Utils.getFileName(filePath);
+            const lastDot = fileName.lastIndexOf('.');
+            const cleanTitle = lastDot > 0 ? fileName.substring(0, lastDot) : fileName;
+            window.mpvAPI.setProperty('sub-visibility', 'yes');
+            window.mpvAPI.command(['sub-add', filePath, 'select', cleanTitle]);
+            App.OSD.show('EXTERNAL SUBTITLE', cleanTitle);
+        },
+
+        loadExternalAudio(filePath) {
+            if (!filePath) return;
+            const fileName = App.Utils.getFileName(filePath);
+            const lastDot = fileName.lastIndexOf('.');
+            const cleanTitle = lastDot > 0 ? fileName.substring(0, lastDot) : fileName;
+            window.mpvAPI.command(['audio-add', filePath, 'select', cleanTitle]);
+            App.OSD.show('EXTERNAL AUDIO', cleanTitle);
         },
 
         openContextMenu(e) {
@@ -238,12 +269,10 @@
             state.subStreams.forEach((s) => {
                 const details = App.Tracks.getDetailedTrackLabel(s);
                 const item = document.createElement('div');
-                let isActive = state.currentSubTrack == s.id;
-                if (s.external && state.currentSubTrack === 'external') isActive = true;
-                item.className = `ctx-item ${isActive ? 'active' : ''}`;
+                item.className = `ctx-item ${state.currentSubTrack == s.id ? 'active' : ''}`;
                 item.innerHTML = `<span class="ctx-main">${App.Utils.escapeHTML(details.mainLabel)}</span><span class="ctx-sub">${App.Utils.escapeHTML(details.subLabel)}</span>`;
                 item.onclick = () => {
-                    App.Tracks.setSubtitle(s.external ? 'external' : s.id);
+                    App.Tracks.setSubtitle(s.id);
                     App.OSD.show('SUBTITLE', details.mainLabel);
                     el.contextMenu.classList.remove('show');
                     App.OSD.resetUIHider();

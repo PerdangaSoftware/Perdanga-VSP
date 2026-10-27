@@ -51,6 +51,8 @@
 | `Double Click` | Toggle Fullscreen |
 | `<` / `>` (`,`, `.`) | Adjust Playback Speed (-/+ 0.05x) |
 | `Left` / `Right` | Smooth Seek -/+ 5 Seconds (Accelerates on hold) |
+| `Arrow Up` / `Down`, `+` / `-`, `0` / `9` | Adjust Volume -/+ 5% (up to 150%) |
+| `M` | Mute / Unmute Volume |
 | `Shift` + `Left` / `Right` | Skip to Previous / Next Chapter |
 | `PgUp` / `PgDn` | Previous / Next File in Playlist |
 | `L` | Toggle Playlist Menu |
@@ -59,7 +61,7 @@
 | `Ctrl` + `+` / `-` | Subtitle Size Scaling |
 | `Shift` + `+` / `-` | Subtitle Vertical Position |
 | `G` / `H` | Subtitle Sync Timing (-/+ 0.1s) |
-| `Mouse Wheel` (over icons) | Adjust Volume, Playback Speed, or Cycle Tracks |
+| `Mouse Wheel` | Adjust Volume (video/icon), Playback Speed, or Cycle Tracks |
 | `Right Click` | Quick Track & Subtitle Selection Menu |
 | `Escape` | Exit Fullscreen or Close Active Modal / Panel |
 

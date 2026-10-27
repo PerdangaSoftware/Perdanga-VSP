@@ -43,16 +43,13 @@ void MpvPlayer::ApplyHighFidelityRenderProfiles() {
     mpv_set_option_string(m_mpv, "d3d11-sync-interval", "1");
     mpv_set_option_string(m_mpv, "d3d11-exclusive-fs", "no");
 
-    mpv_set_option_string(m_mpv, "hwdec", "auto-safe");
-
-    unsigned int hwThreads = std::thread::hardware_concurrency();
-    unsigned int safeThreads = (hwThreads > 0) ? std::clamp(hwThreads, 2u, 8u) : 4u;
-    mpv_set_option_string(m_mpv, "vd-lavc-threads", std::to_string(safeThreads).c_str());
+    mpv_set_option_string(m_mpv, "hwdec", "auto");
+    mpv_set_option_string(m_mpv, "vd-lavc-threads", "0");
     mpv_set_option_string(m_mpv, "vd-lavc-fast", "yes");
-    mpv_set_option_string(m_mpv, "vd-lavc-dr", "no");
+    mpv_set_option_string(m_mpv, "vd-lavc-dr", "yes");
 
-    mpv_set_option_string(m_mpv, "framedrop", "no");
-    mpv_set_option_string(m_mpv, "hr-seek-framedrop", "no");
+    mpv_set_option_string(m_mpv, "framedrop", "vo");
+    mpv_set_option_string(m_mpv, "hr-seek-framedrop", "yes");
 
     mpv_set_option_string(m_mpv, "scale", "spline36");
     mpv_set_option_string(m_mpv, "scale-antiring", "0.7");
@@ -96,10 +93,11 @@ void MpvPlayer::ApplyHighFidelityRenderProfiles() {
     mpv_set_option_string(m_mpv, "cache", "yes");
     mpv_set_option_string(m_mpv, "demuxer-max-bytes", "268435456");
     mpv_set_option_string(m_mpv, "demuxer-max-back-bytes", "67108864");
-    mpv_set_option_string(m_mpv, "demuxer-readahead-secs", "6");
-    mpv_set_option_string(m_mpv, "demuxer-lavf-buffersize", "1048576");
+    mpv_set_option_string(m_mpv, "demuxer-readahead-secs", "20");
+    mpv_set_option_string(m_mpv, "demuxer-lavf-buffersize", "4194304");
     mpv_set_option_string(m_mpv, "audio-buffer", "0.2");
     mpv_set_option_string(m_mpv, "audio-pitch-correction", "yes");
+    mpv_set_option_string(m_mpv, "volume-max", "150");
 
     mpv_set_option_string(m_mpv, "keepaspect", "yes");
     mpv_set_option_string(m_mpv, "keepaspect-window", "no");

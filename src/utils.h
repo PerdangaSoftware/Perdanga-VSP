@@ -69,7 +69,19 @@ inline bool IsMediaExtension(const std::wstring& ext) {
     static const std::vector<std::wstring> exts = {
         L".mp4", L".mkv", L".webm", L".avi", L".mov", L".wmv", L".flv",
         L".ts", L".m2ts", L".mts", L".vob", L".m4v", L".3gp", L".mpg", L".mpeg",
-        L".mp3", L".wav", L".flac", L".ogg", L".m4a", L".aac", L".opus", L".wma", L".alac", L".ac3", L".dts"
+        L".mp3", L".wav", L".flac", L".ogg", L".m4a", L".aac", L".opus", L".wma",
+        L".alac", L".ac3", L".eac3", L".dts", L".dtshd", L".truehd", L".thd", L".mka"
+    };
+    for (const auto& e : exts) {
+        if (_wcsicmp(ext.c_str(), e.c_str()) == 0) return true;
+    }
+    return false;
+}
+
+inline bool IsAudioOnlyExtension(const std::wstring& ext) {
+    static const std::vector<std::wstring> exts = {
+        L".mka", L".mp3", L".wav", L".flac", L".ogg", L".m4a", L".aac",
+        L".opus", L".wma", L".alac", L".ac3", L".eac3", L".dts", L".dtshd", L".truehd", L".thd"
     };
     for (const auto& e : exts) {
         if (_wcsicmp(ext.c_str(), e.c_str()) == 0) return true;
@@ -95,11 +107,14 @@ struct PlaylistResult {
     std::vector<std::string> playlist;
     int playlistIndex = 0;
     std::string subPath;
+    std::string audioPath;
+    bool isAudioOnlyDrop = false;
 };
 
 inline PlaylistResult BuildPlaylistData(const std::vector<std::wstring>& inputPaths) {
     PlaylistResult result;
-    std::vector<std::wstring> mediaFiles;
+    std::vector<std::wstring> videoFiles;
+    std::vector<std::wstring> audioFiles;
     std::vector<std::wstring> subFiles;
 
     for (auto rawPath : inputPaths) {
@@ -114,22 +129,49 @@ inline PlaylistResult BuildPlaylistData(const std::vector<std::wstring>& inputPa
                  it != std::filesystem::recursive_directory_iterator(); ++it) {
                 if (it->is_regular_file(ec)) {
                     std::wstring ext = it->path().extension().wstring();
-                    if (IsMediaExtension(ext)) {
-                        dirFiles.push_back(it->path().wstring());
+                    if (IsSubExtension(ext)) {
+                        subFiles.push_back(it->path().wstring());
+                    } else if (IsAudioOnlyExtension(ext)) {
+                        audioFiles.push_back(it->path().wstring());
+                    } else if (IsMediaExtension(ext)) {
+                        videoFiles.push_back(it->path().wstring());
                     }
                 }
             }
             NaturalSort(dirFiles);
-            mediaFiles.insert(mediaFiles.end(), dirFiles.begin(), dirFiles.end());
         } else if (std::filesystem::is_regular_file(p, ec)) {
             std::wstring ext = p.extension().wstring();
             if (IsSubExtension(ext)) {
                 subFiles.push_back(p.wstring());
+            } else if (IsAudioOnlyExtension(ext)) {
+                audioFiles.push_back(p.wstring());
+            } else if (IsMediaExtension(ext)) {
+                videoFiles.push_back(p.wstring());
             } else {
-                // All files passed directly are added to the playlist
-                mediaFiles.push_back(p.wstring());
+                videoFiles.push_back(p.wstring());
             }
         }
+    }
+
+    NaturalSort(videoFiles);
+    NaturalSort(audioFiles);
+    NaturalSort(subFiles);
+
+    std::vector<std::wstring> mediaFiles;
+    if (!videoFiles.empty()) {
+        mediaFiles = videoFiles;
+        if (!audioFiles.empty()) {
+            result.audioPath = Utf16ToUtf8(audioFiles[0]);
+        }
+        result.isAudioOnlyDrop = false;
+    } else if (!audioFiles.empty()) {
+        mediaFiles = audioFiles;
+        result.audioPath = Utf16ToUtf8(audioFiles[0]);
+        result.isAudioOnlyDrop = true;
+    }
+
+    if (!subFiles.empty()) {
+        result.subPath = Utf16ToUtf8(subFiles[0]);
     }
 
     std::vector<std::wstring> finalPlaylist;
@@ -141,9 +183,20 @@ inline PlaylistResult BuildPlaylistData(const std::vector<std::wstring>& inputPa
         std::vector<std::wstring> siblingFiles;
         std::error_code ec;
 
+        bool targetIsAudio = IsAudioOnlyExtension(target.extension().wstring());
+
         for (const auto& entry : std::filesystem::directory_iterator(parentDir, ec)) {
-            if (entry.is_regular_file(ec) && IsMediaExtension(entry.path().extension().wstring())) {
-                siblingFiles.push_back(entry.path().wstring());
+            if (entry.is_regular_file(ec)) {
+                std::wstring ext = entry.path().extension().wstring();
+                if (targetIsAudio) {
+                    if (IsAudioOnlyExtension(ext)) {
+                        siblingFiles.push_back(entry.path().wstring());
+                    }
+                } else {
+                    if (IsMediaExtension(ext) && !IsAudioOnlyExtension(ext)) {
+                        siblingFiles.push_back(entry.path().wstring());
+                    }
+                }
             }
         }
         NaturalSort(siblingFiles);
@@ -163,10 +216,6 @@ inline PlaylistResult BuildPlaylistData(const std::vector<std::wstring>& inputPa
         result.playlist.push_back(Utf16ToUtf8(f));
     }
     result.playlistIndex = targetIdx;
-
-    if (!subFiles.empty()) {
-        result.subPath = Utf16ToUtf8(subFiles[0]);
-    }
     return result;
 }
 

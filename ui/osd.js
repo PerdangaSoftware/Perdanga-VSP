@@ -5,8 +5,44 @@
 
     let osdTimeout = null;
     let uiTimeout = null;
+    let mpvVolTimeout = null;
 
     App.OSD = {
+        showVolumeBar(vol, isMuted = false) {
+            const el = App.Elements;
+            if (!el.mpvVolumeOsd || !el.vspVolFill) return;
+
+            const clampedVol = Math.max(0, Math.min(1.5, vol));
+            const pct = isMuted ? 0 : Math.min(100, Math.max(0, (clampedVol / 1.5) * 100));
+
+            el.vspVolFill.style.width = pct + '%';
+
+            if (isMuted || clampedVol <= 0) {
+                if (el.vspVolIcon) el.vspVolIcon.style.display = 'none';
+                if (el.vspVolMuteIcon) el.vspVolMuteIcon.style.display = 'block';
+                if (el.vspVolText) el.vspVolText.textContent = 'MUTE';
+                el.vspVolFill.classList.remove('boosted');
+                if (el.vspVolText) el.vspVolText.classList.remove('boosted');
+            } else {
+                if (el.vspVolIcon) el.vspVolIcon.style.display = 'block';
+                if (el.vspVolMuteIcon) el.vspVolMuteIcon.style.display = 'none';
+                if (el.vspVolText) el.vspVolText.textContent = `${Math.round(clampedVol * 100)}%`;
+                if (clampedVol > 1.0) {
+                    el.vspVolFill.classList.add('boosted');
+                    if (el.vspVolText) el.vspVolText.classList.add('boosted');
+                } else {
+                    el.vspVolFill.classList.remove('boosted');
+                    if (el.vspVolText) el.vspVolText.classList.remove('boosted');
+                }
+            }
+
+            el.mpvVolumeOsd.classList.add('show');
+            clearTimeout(mpvVolTimeout);
+            mpvVolTimeout = setTimeout(() => {
+                el.mpvVolumeOsd.classList.remove('show');
+            }, 1400);
+        },
+
         show(title, main, sub = '') {
             const el = App.Elements;
             el.osdTitle.textContent = title;
@@ -91,8 +127,7 @@
                     if (!state.isDraggingTimeline &&
                         !state.isAccumulatingSeek &&
                         !state.isDraggingVolume &&
-                        !el.volumeSlider.matches(':active') &&
-                        !modalOpen &&
+                                                !modalOpen &&
                         !controlsHovered &&
                         !titleBarHovered) {
                         App.OSD.hideUI();

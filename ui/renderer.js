@@ -35,7 +35,7 @@
             window.mpvAPI.setProperty('pause', newPauseState);
         },
 
-        async loadMedia(filePath, subPath = null) {
+        async loadMedia(filePath, subPath = null, audioPath = null) {
             const state = App.State;
             const el = App.Elements;
 
@@ -53,6 +53,7 @@
             state.subStreams = [];
             state.mediaChapters = [];
             state.pendingSubPath = subPath;
+            state.pendingAudioPath = audioPath;
 
             App.Thumbnails.reset();
 
@@ -85,11 +86,17 @@
             if (paths.length === 0) return;
             const result = await window.electronAPI.processFiles(paths);
 
-            if (result && result.playlist.length > 0) {
+            if (result && result.isAudioOnlyDrop && App.State.isVideoLoaded && !App.State.isAudioMode && result.audioPath) {
+                App.Tracks.loadExternalAudio(result.audioPath);
+            } else if (result && result.playlist && result.playlist.length > 0) {
                 App.State.playlist = result.playlist;
                 App.State.playlistIndex = result.playlistIndex;
                 App.Playlist.render();
-                App.Main.loadMedia(App.State.playlist[App.State.playlistIndex], result.subPath || null);
+                App.Main.loadMedia(App.State.playlist[App.State.playlistIndex], result.subPath || null, result.audioPath || null);
+            } else if (result && result.subPath && App.State.isVideoLoaded && App.State.currentFilePath) {
+                App.Tracks.loadExternalSubtitle(result.subPath);
+            } else if (result && result.audioPath && App.State.isVideoLoaded && !App.State.isAudioMode) {
+                App.Tracks.loadExternalAudio(result.audioPath);
             }
         },
 
@@ -103,8 +110,7 @@
 
             window.electronAPI.processSubFile(safePath).then(authorizedPath => {
                 if (authorizedPath) {
-                    window.mpvAPI.command(['sub-add', authorizedPath, 'auto']);
-                    App.OSD.show('EXTERNAL FILE', 'Loaded External Subtitle', 'Custom Subtitle Track (.vtt / .srt / .ass)');
+                    App.Tracks.loadExternalSubtitle(authorizedPath);
                 }
             });
         },
@@ -136,9 +142,19 @@
                 window.electronAPI.toggleFullscreen();
             });
 
+            el.videoClickSurface.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                window.PlayerAPI.changeVolume(e.deltaY < 0 ? 0.05 : -0.05);
+            }, { passive: false });
+
             el.audioVisualizer.addEventListener('click', () => {
                 if (state.isAudioMode) App.Main.togglePlay();
             });
+
+            el.audioVisualizer.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                window.PlayerAPI.changeVolume(e.deltaY < 0 ? 0.05 : -0.05);
+            }, { passive: false });
 
             const openSubAction = (e) => {
                 if (e) e.stopPropagation();
@@ -146,18 +162,29 @@
                 window.electronAPI.openSubDialog();
             };
 
-            el.loadSubBtn.addEventListener('click', openSubAction);
-            el.ctxLoadSub.addEventListener('click', openSubAction);
+            const openAudioAction = (e) => {
+                if (e) e.stopPropagation();
+                el.contextMenu.classList.remove('show');
+                window.electronAPI.openAudioDialog();
+            };
+
+            if (el.loadSubBtn) el.loadSubBtn.addEventListener('click', openSubAction);
+            if (el.ctxLoadSub) el.ctxLoadSub.addEventListener('click', openSubAction);
+            if (el.loadAudioBtn) el.loadAudioBtn.addEventListener('click', openAudioAction);
+            if (el.ctxLoadAudio) el.ctxLoadAudio.addEventListener('click', openAudioAction);
 
             window.electronAPI.onLoadPlaylist((result) => {
-                if (result && result.playlist.length > 0) {
+                if (result && result.isAudioOnlyDrop && state.isVideoLoaded && !state.isAudioMode && result.audioPath) {
+                    App.Tracks.loadExternalAudio(result.audioPath);
+                } else if (result && result.playlist && result.playlist.length > 0) {
                     state.playlist = result.playlist;
                     state.playlistIndex = result.playlistIndex;
                     App.Playlist.render();
-                    App.Main.loadMedia(state.playlist[state.playlistIndex], result.subPath || null);
+                    App.Main.loadMedia(state.playlist[state.playlistIndex], result.subPath || null, result.audioPath || null);
                 } else if (result && result.subPath && state.isVideoLoaded && state.currentFilePath) {
-                    window.mpvAPI.command(['sub-add', result.subPath, 'auto']);
-                    App.OSD.show('EXTERNAL FILE', 'Loaded External Subtitle', 'Custom Subtitle Track (.vtt / .srt / .ass)');
+                    App.Tracks.loadExternalSubtitle(result.subPath);
+                } else if (result && result.audioPath && state.isVideoLoaded && !state.isAudioMode) {
+                    App.Tracks.loadExternalAudio(result.audioPath);
                 }
             });
 
@@ -273,8 +300,7 @@
 
                             const currentSub = state.mpvTrackList.find(t => t.type === 'sub' && t.selected);
                             if (currentSub) {
-                                state.currentSubTrack = currentSub.external ? 'external' : currentSub.id;
-                                if (currentSub.external) state.externalSubId = currentSub.id;
+                                state.currentSubTrack = currentSub.id;
                             } else {
                                 state.currentSubTrack = 'off';
                             }
@@ -296,10 +322,9 @@
                             App.Timeline.renderMarkers();
                             break;
                         case 'volume':
-                            if (!state.isDraggingVolume) {
-                                el.volumeSlider.value = Math.max(0, Math.min(1, (data.value || 0) / 100));
-                                App.Tracks.updateVolumeUI();
-                            }
+                            const realVol = Math.max(0, Math.min(1.5, (data.value || 0) / 100));
+                            state.currentVolume = realVol;
+                            App.Tracks.updateVolumeUI();
                             break;
                         case 'speed':
                             if (Math.abs(data.value - state.userPlaybackRate) > 0.01) {
@@ -351,13 +376,17 @@
                     const saved = JSON.parse(localStorage.getItem('perdangaSettings')) || {};
                     window.mpvAPI.setProperty('sub-scale', parseFloat(saved.size || '1.0'));
                     window.mpvAPI.setProperty('sub-pos', parseFloat(saved.pos || '100'));
-                    window.mpvAPI.setProperty('volume', parseFloat(el.volumeSlider.value) * 100);
+                    const curVol = (state.currentVolume !== undefined && state.currentVolume !== null) ? state.currentVolume : 1.0;
+                    window.mpvAPI.setProperty('volume', curVol * 100);
                     window.mpvAPI.setProperty('speed', state.userPlaybackRate);
 
                     if (state.pendingSubPath) {
-                        window.mpvAPI.command(['sub-add', state.pendingSubPath, 'auto']);
-                        App.OSD.show('EXTERNAL FILE', 'Loaded External Subtitle', 'Custom Subtitle Track (.vtt / .srt / .ass)');
+                        App.Tracks.loadExternalSubtitle(state.pendingSubPath);
                         state.pendingSubPath = null;
+                    }
+                    if (state.pendingAudioPath) {
+                        App.Tracks.loadExternalAudio(state.pendingAudioPath);
+                        state.pendingAudioPath = null;
                     }
 
                     if (savedTime > 0) {
@@ -404,6 +433,28 @@
                     window.mpvAPI.setProperty('sub-delay', state.subDelay);
                 },
                 changePlaybackSpeed: (delta) => App.Tracks.updatePlaybackSpeed(state.userPlaybackRate + delta),
+                changeVolume: (delta) => {
+                    let curVol = (state.currentVolume !== undefined && state.currentVolume !== null) ? state.currentVolume : 1.0;
+                    let vol = Math.max(0, Math.min(1.5, Math.round((curVol + delta) * 100) / 100));
+                    state.currentVolume = vol;
+                    if (vol > 0) state.lastVolume = vol;
+                    window.mpvAPI.setProperty('volume', vol * 100);
+                    App.Tracks.updateVolumeUI();
+                    App.OSD.showVolumeBar(vol);
+                },
+                toggleMute: () => {
+                    let curVol = (state.currentVolume !== undefined && state.currentVolume !== null) ? state.currentVolume : 1.0;
+                    if (curVol > 0) {
+                        state.lastVolume = curVol;
+                        state.currentVolume = 0;
+                    } else {
+                        state.currentVolume = state.lastVolume || 1.0;
+                    }
+                    const newVol = state.currentVolume;
+                    window.mpvAPI.setProperty('volume', newVol * 100);
+                    App.Tracks.updateVolumeUI();
+                    App.OSD.showVolumeBar(newVol, newVol === 0);
+                },
                 formatTime: App.Utils.formatTime,
                 resetUIHider: App.OSD.resetUIHider
             };

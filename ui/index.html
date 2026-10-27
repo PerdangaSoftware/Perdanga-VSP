@@ -95,6 +95,24 @@
             <div id="thumbText">00:00:00.000 | Frame: 0</div>
         </div>
 
+        <div id="mpvVolumeOsd" class="vsp-volume-osd">
+            <div class="vsp-vol-icon-wrap" id="vspVolIconWrap">
+                <svg viewBox="0 0 24 24" class="vsp-vol-icon" id="vspVolIcon">
+                    <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                </svg>
+                <svg viewBox="0 0 24 24" class="vsp-vol-icon" id="vspVolMuteIcon" style="display:none;">
+                    <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>
+                </svg>
+            </div>
+            <div class="vsp-vol-track-container">
+                <div class="vsp-vol-track">
+                    <div class="vsp-vol-fill" id="vspVolFill"></div>
+                    <div class="vsp-vol-notch" title="100%"></div>
+                </div>
+            </div>
+            <div class="vsp-vol-badge" id="vspVolText">100%</div>
+        </div>
+
         <div id="controls">
             <div class="progress-container">
                 <span id="currentTime" class="time-text">00:00</span>
@@ -118,12 +136,12 @@
                         <svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
                     </button>
 
-                    <div class="switch-wrap volume-block" id="volumeWrap" title="Adjust Volume">
+                    <div class="switch-wrap volume-block" id="volumeWrap" title="Adjust Volume (Scroll Wheel / Click to Mute)">
                         <button class="icon-btn" id="muteBtn">
                             <svg viewBox="0 0 24 24" id="volUpIcon"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
                             <svg viewBox="0 0 24 24" id="volMuteIcon" style="display:none;"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
                         </button>
-                        <input type="range" id="volumeSlider" min="0" max="1" step="0.05" value="1">
+                        <span id="volBoostBadge" class="vol-boost-badge" style="display:none;">100%</span>
                     </div>
 
                     <div class="separator"></div>
@@ -159,6 +177,9 @@
                                 <svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
                             </button>
                             <span id="audioTrackCount" class="track-count">0/0</span>
+                            <button class="icon-btn" id="loadAudioBtn" title="Load External Audio" style="margin-left: -4px;">
+                                <svg viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
+                            </button>
                         </div>
                         <div class="block-divider"></div>
                         <div class="switch-wrap" id="subSwitchWrap">
@@ -190,6 +211,8 @@
                 <div class="ctx-column">
                     <div class="ctx-section-title">Audio Tracks</div>
                     <div id="contextAudioList" class="ctx-scrollable"></div>
+                    <div class="ctx-divider"></div>
+                    <div class="ctx-btn-text" id="ctxLoadAudio">+ Load External Audio</div>
                 </div>
                 <div class="ctx-column">
                     <div class="ctx-section-title">Subtitles</div>
@@ -278,22 +301,26 @@
                     <div class="hotkey-row"><span class="hk-key">Space</span><span class="hk-desc">Play / Pause</span></div>
                     <div class="hotkey-row"><span class="hk-key">Double Click</span><span class="hk-desc">Toggle Fullscreen</span></div>
                     <div class="hotkey-row"><span class="hk-key">&lt; / &gt;</span><span class="hk-desc">Slow Down / Speed Up Playback</span></div>
-                    <div class="hotkey-row"><span class="hk-key">Left / Right</span><span class="hk-desc">Seek -/+ 5 Seconds</span></div>
+                    <div class="hotkey-row"><span class="hk-key">Left / Right</span><span class="hk-desc">Smooth Seek -/+ 5 Seconds (Accelerates on hold)</span></div>
+                    <div class="hotkey-row"><span class="hk-key">Arrow Up / Down, + / -, 0 / 9</span><span class="hk-desc">Volume -/+ 5% (up to 150%)</span></div>
+                    <div class="hotkey-row"><span class="hk-key">M</span><span class="hk-desc">Mute / Unmute Volume</span></div>
                     <div class="hotkey-row"><span class="hk-key">Shift + Left / Right</span><span class="hk-desc">Previous / Next Chapter</span></div>
                     <div class="hotkey-row"><span class="hk-key">PgUp / PgDn</span><span class="hk-desc">Previous / Next File in Playlist</span></div>
                     <div class="hotkey-row"><span class="hk-key">L</span><span class="hk-desc">Toggle Playlist Menu</span></div>
                     <div class="hotkey-row"><span class="hk-key">C</span><span class="hk-desc">Toggle Chapters Menu</span></div>
                     <div class="hotkey-row"><span class="hk-key">S</span><span class="hk-desc">Take Screenshot</span></div>
                     <div class="hotkey-row"><span class="hk-key">Ctrl + / -</span><span class="hk-desc">Subtitle Size</span></div>
-                    <div class="hotkey-row"><span class="hk-key">Shift + / -</span><span class="hk-desc">Subtitle Vertical Position</span></div>
+                    <div class="hotkey-row"><span class="hk-key">Shift + / -</span><span class="hk-desc">Subtitle Position</span></div>
                     <div class="hotkey-row"><span class="hk-key">G / H</span><span class="hk-desc">Subtitle Sync Delay (-/+ 0.1s)</span></div>
-                    <div class="hotkey-row"><span class="hk-key">Scroll Wheel</span><span class="hk-desc">Hover over track/volume/speed icons to cycle</span></div>
-                    <div class="hotkey-row"><span class="hk-key">Right Click</span><span class="hk-desc">Open Track Selection Menu</span></div>
+                    <div class="hotkey-row"><span class="hk-key">Mouse Wheel</span><span class="hk-desc">Adjust Volume (video/icon), Speed, or Cycle Tracks</span></div>
+                    <div class="hotkey-row"><span class="hk-key">Right Click</span><span class="hk-desc">Quick Track & Subtitle Selection Menu</span></div>
+                    <div class="hotkey-row"><span class="hk-key">Escape</span><span class="hk-desc">Exit Fullscreen or Close Active Modal / Panel</span></div>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Modular Frontend Pipeline -->
     <script src="bridge.js"></script>
     <script src="state.js"></script>
     <script src="utils.js"></script>

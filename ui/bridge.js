@@ -21,6 +21,8 @@
         if (host) host.postMessage(message);
     }
 
+
+
     if (host) {
         host.addEventListener('message', (e) => {
             const data = e.data;
@@ -79,6 +81,7 @@
         toggleFullscreen: () => postToHost({ type: 'window-fullscreen' }),
         openFileDialog: () => postToHost({ type: 'open-file-dialog' }),
         openSubDialog: () => postToHost({ type: 'open-sub-dialog' }),
+        openAudioDialog: () => postToHost({ type: 'open-audio-dialog' }),
         changeIcon: (icon) => postToHost({ type: 'change-icon', icon }),
         onWindowMaximizeState: (cb) => eventListeners['window-maximize-state'].push(cb),
         onFullscreenState: (cb) => eventListeners['fullscreen-state'].push(cb),
