@@ -147,7 +147,7 @@ libmpv/
 <br>
 
 <div align="center">
-  <img src="https://github.com/PerdangaSoftware/Perdanga-VSP/blob/main/VspLogo.png?raw=true" width="120" alt="Perdanga VSP Logo"/>
+  <img src="https://raw.githubusercontent.com/PerdangaSoftware/Perdanga-VSP/refs/heads/main/ui/ico/GreenOrange.ico" width="120" alt="Perdanga VSP Logo"/>
    <br><br>
   <h2>Perdanga Forever!</h2>
 </div>
