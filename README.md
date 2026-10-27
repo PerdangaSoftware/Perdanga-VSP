@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://gitlab.com/perdanga/perdanga-vsp/-/raw/main/Screenshots/Perdanga_VSP.png?ref_type=heads" width="800" alt="Perdanga VSP Header"/> 
+<img src="https://github.com/PerdangaSoftware/Perdanga-VSP/blob/main/Screenshots/Perdanga_VSP.png?raw=true" width="800" alt="Perdanga VSP Header"/> 
 
 # Perdanga VSP 
 
@@ -9,17 +9,17 @@
 </div>
 
 <p align="center">
-  <img src="https://gitlab.com/perdanga/perdanga-vsp/-/raw/main/Screenshots/Subtitles.png?ref_type=heads" width="800" alt="Main Interface"/>
+  <img src="https://github.com/PerdangaSoftware/Perdanga-VSP/blob/main/Screenshots/Subtitles.png?raw=true" width="800" alt="Main Interface"/>
 </p>
 
 <p align="center">
   <b>Media Playlist & Timeline Preview</b><br>
-  <img src="https://gitlab.com/perdanga/perdanga-vsp/-/raw/main/Screenshots/Media_Playlist.png?ref_type=heads" width="800" alt="Playlist Menu"/>
+  <img src="https://github.com/PerdangaSoftware/Perdanga-VSP/blob/main/Screenshots/Media_Playlist.png?raw=true" width="800" alt="Playlist Menu"/>
 </p>
 
 | Video Frame Preview | Audio & Subtitles |
 | :---: | :---: |
-| <img src="https://gitlab.com/perdanga/perdanga-vsp/-/raw/main/Screenshots/Video_Frame.png?ref_type=heads" width="400" alt="Video Frame"> | <img src="https://gitlab.com/perdanga/perdanga-vsp/-/raw/main/Screenshots/Right_Click_Menu.png?ref_type=heads" width="400" alt="Audio and Subs"> |
+| <img src="https://github.com/PerdangaSoftware/Perdanga-VSP/blob/main/Screenshots/Video_Frame.png?raw=true" width="400" alt="Video Frame"> | <img src="https://github.com/PerdangaSoftware/Perdanga-VSP/blob/main/Screenshots/Right_Click_Menu.png?raw=true" width="400" alt="Audio and Subs"> |
 
 ---
 
