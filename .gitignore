@@ -1,0 +1,66 @@
+# Build directories and outputs
+build/
+dist/
+bin/
+out/
+x64/
+x86/
+Debug/
+Release/
+*.exe
+
+# Large third-party vendor binaries (exceeds GitHub 100MB limit)
+libmpv/
+packages/
+ultralight/
+
+# Local backups, agent rules, changelogs, and scratch files
+backup/
+scratch/
+rules.md
+CHANGELOG.md
+
+# MSVC and C++ compiler/linker intermediate files
+*.obj
+*.o
+*.ilk
+*.pdb
+*.idb
+*.exp
+*.lib.recipe
+*.tlog
+*.log
+
+# CMake generated files and caches
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+Testing/
+Makefile
+*.ninja
+cmake_install.cmake
+cmake-build-*/
+
+# IDE and Editor configuration
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.VC.db
+*.VC.opendb
+
+# Temporary, backup, and lock files
+*.tmp
+*.bak
+*.swp
+*.old
+*.orig
+*~
+
+# Operating system files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store

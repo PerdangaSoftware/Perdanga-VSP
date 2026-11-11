@@ -2,7 +2,6 @@
     'use strict';
 
     const RPC_TIMEOUT_MS = 15000;
-
     let rpcId = 0;
     const rpcResolvers = new Map();
 
@@ -14,45 +13,79 @@
         'thumbnail-ready': []
     };
 
-    // Native messaging endpoint (null when the page runs outside WebView2)
-    const host = (window.chrome && window.chrome.webview) ? window.chrome.webview : null;
+    let host = (window.chrome && window.chrome.webview) ? window.chrome.webview : null;
+
+    if (!host && window.app && typeof window.app.postMessage === 'function') {
+        host = {
+            postMessage: function (msg) {
+                const str = typeof msg === 'string' ? msg : JSON.stringify(msg);
+                window.app.postMessage(str);
+            },
+            addEventListener: function (type, cb) {
+                window.__nativeMessageListeners = window.__nativeMessageListeners || [];
+                window.__nativeMessageListeners.push(cb);
+            }
+        };
+    }
+
+    function dispatchPayload(data) {
+        if (!data) return;
+        if (data.type === 'rpc-response') {
+            const resolver = rpcResolvers.get(data.id);
+            if (resolver) {
+                rpcResolvers.delete(data.id);
+                resolver(data.result);
+            }
+        } else if (data.type === 'window-maximize-state') {
+            eventListeners['window-maximize-state'].forEach(cb => cb(data.state));
+        } else if (data.type === 'fullscreen-state') {
+            eventListeners['fullscreen-state'].forEach(cb => cb(data.isFullscreen));
+        } else if (data.type === 'load-playlist') {
+            eventListeners['load-playlist'].forEach(cb => cb(data));
+        } else if (data.type === 'mpv-event') {
+            eventListeners['mpv-event'].forEach(cb => cb(data.data));
+        } else if (data.type === 'thumbnail-ready') {
+            eventListeners['thumbnail-ready'].forEach(cb => cb(data));
+        } else if (data.type === 'escape-pressed') {
+            if (window.App && typeof window.App.handleEscape === 'function') {
+                window.App.handleEscape();
+            }
+        }
+    }
+
+    window.__dispatchNativeMessage = function (data) {
+        let parsed = data;
+        if (typeof data === 'string') {
+            try {
+                parsed = JSON.parse(data);
+            } catch (err) {
+                parsed = null;
+            }
+        }
+        dispatchPayload(parsed);
+        if (window.__nativeMessageListeners) {
+            window.__nativeMessageListeners.forEach(cb => cb({ data: parsed }));
+        }
+    };
 
     function postToHost(message) {
+        if (!host && window.app && typeof window.app.postMessage === 'function') {
+            const str = typeof message === 'string' ? message : JSON.stringify(message);
+            window.app.postMessage(str);
+            return;
+        }
         if (host) host.postMessage(message);
     }
 
-
-
-    if (host) {
+    if (host && host.addEventListener) {
         host.addEventListener('message', (e) => {
-            const data = e.data;
-            if (!data) return;
-
-            if (data.type === 'rpc-response') {
-                const resolver = rpcResolvers.get(data.id);
-                if (resolver) {
-                    rpcResolvers.delete(data.id);
-                    resolver(data.result);
-                }
-            } else if (data.type === 'window-maximize-state') {
-                eventListeners['window-maximize-state'].forEach(cb => cb(data.state));
-            } else if (data.type === 'fullscreen-state') {
-                eventListeners['fullscreen-state'].forEach(cb => cb(data.isFullscreen));
-            } else if (data.type === 'load-playlist') {
-                eventListeners['load-playlist'].forEach(cb => cb(data));
-            } else if (data.type === 'mpv-event') {
-                eventListeners['mpv-event'].forEach(cb => cb(data.data));
-            } else if (data.type === 'thumbnail-ready') {
-                eventListeners['thumbnail-ready'].forEach(cb => cb(data));
-            }
+            dispatchPayload(e.data);
         });
     }
 
-    // Request/response wrapper. Resolves to null on timeout (graceful
-    // fallback) so awaiting UI code keeps working instead of dead-locking.
     function callRpc(type, payload = {}) {
         return new Promise((resolve) => {
-            if (!host) {
+            if (!host && (!window.app || typeof window.app.postMessage !== 'function')) {
                 resolve(null);
                 return;
             }
@@ -60,7 +93,6 @@
             const timer = setTimeout(() => {
                 if (rpcResolvers.has(id)) {
                     rpcResolvers.delete(id);
-                    console.warn('RPC timed out: ' + type);
                     resolve(null);
                 }
             }, RPC_TIMEOUT_MS);
@@ -68,12 +100,14 @@
                 clearTimeout(timer);
                 resolve(result);
             });
-            host.postMessage({ type, id, ...payload });
+            postToHost({ type, id, ...payload });
         });
     }
 
     window.electronAPI = {
+        appReady: () => postToHost({ type: 'app-ready' }),
         windowMinimize: () => postToHost({ type: 'window-minimize' }),
+        minimize: () => postToHost({ type: 'window-minimize' }),
         windowMaximize: () => postToHost({ type: 'window-maximize' }),
         windowClose: () => postToHost({ type: 'window-close' }),
         windowDrag: () => postToHost({ type: 'window-drag' }),
@@ -87,14 +121,11 @@
         onFullscreenState: (cb) => eventListeners['fullscreen-state'].push(cb),
         onLoadPlaylist: (cb) => eventListeners['load-playlist'].push(cb),
         processFiles: (paths) => callRpc('process-files', { paths }),
-        // Stub kept for API compatibility: external subtitles are loaded
-        // natively by the host (open-sub-dialog / sub-add command).
         processSubFile: (path) => Promise.resolve(path),
         getScreenshotPath: (filename) => callRpc('get-screenshot-path', { filename }),
-        // NOTE: File.path does not exist in WebView2 (it is an Electron-only
-        // feature). Drag & drop is handled natively by the host via IDropTarget,
-        // so this is a display-name fallback only.
-        getPathForFile: (file) => file.path || file.name
+        getPathForFile: (file) => file.path || file.name,
+        setCursorHidden: (hidden) => postToHost({ type: 'set-cursor-hidden', hidden }),
+        pickColor: (currentColor) => callRpc('open-color-dialog', { currentColor })
     };
 
     window.mpvAPI = {
@@ -102,7 +133,7 @@
         loadFile: (path) => postToHost({ type: 'mpv-load', path }),
         command: (args) => postToHost({ type: 'mpv-command', args }),
         seek: (time, absolute, exact = true) => postToHost({ type: 'mpv-seek', time, absolute, exact }),
-        requestThumbnail: (time) => postToHost({ type: 'request-thumbnail', time }),
+        requestThumbnail: (time, exact = false, reqId = 0) => postToHost({ type: 'request-thumbnail', time, exact, reqId }),
         setProperty: (name, value) => postToHost({ type: 'mpv-set-property', name, value }),
         observeProperty: () => {},
         setRenderSize: () => {},

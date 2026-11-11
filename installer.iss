@@ -1,5 +1,5 @@
 #define MyAppName "Perdanga VSP"
-#define MyAppVersion "1.2"
+#define MyAppVersion "1.3"
 #define MyAppPublisher "Perdanga Software"
 #define MyAppURL "https://github.com/PerdangaSoftware/Perdanga-VSP"
 #define MyAppWebURL "https://perdanga-vsp.vercel.app/"
@@ -16,16 +16,25 @@ AppUpdatesURL={#MyAppURL}
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableDirPage=no
-UninstallDisplayIcon={app}\ui\ico\GreenOrange.ico
+UninstallDisplayIcon={app}\icons\GreenOrange.ico
 OutputDir=dist
 OutputBaseFilename=PerdangaVSP_Setup
 SetupIconFile=ui\ico\GreenOrange.ico
+VersionInfoVersion=1.3.0.0
+VersionInfoTextVersion=1.3
+VersionInfoProductVersion=1.3.0.0
+VersionInfoProductTextVersion=1.3
+VersionInfoCompany={#MyAppPublisher}
+VersionInfoDescription={#MyAppName} Setup
+VersionInfoCopyright=Copyright (C) 2026 {#MyAppPublisher}
 WizardImageFile=WizardImage.bmp,WizardImage200.bmp
 WizardSmallImageFile=VspLogo.bmp,VspLogo200.bmp
-Compression=lzma2/ultra64
+Compression=lzma2/max
 SolidCompression=yes
 LZMAUseSeparateProcess=yes
-LZMANumBlockThreads=4
+LZMADictionarySize=262144
+LZMANumFastBytes=273
+LZMABlockSize=262144
 WizardStyle=modern
 ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequired=admin
@@ -68,19 +77,27 @@ Name: "associatefiles"; Description: "{cm:AssocTasks}"; GroupDescription: "{cm:A
 [Files]
 Source: "build\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "build\mpv.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "build\ui\*"; DestDir: "{app}\ui"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "*.txt,*.map,*.bak,*.md"
+Source: "build\AppCore.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "build\Ultralight.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "build\UltralightCore.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "build\WebCore.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "build\resources\*"; DestDir: "{app}\resources"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "build\icons\*.ico"; DestDir: "{app}\icons"; Flags: ignoreversion
+
+[InstallDelete]
+Type: filesandordirs; Name: "{app}\ui"
 
 [Icons]
-Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\ui\ico\GreenOrange.ico"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\ui\ico\GreenOrange.ico"; Tasks: desktopicon
+Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\icons\GreenOrange.ico"
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\icons\GreenOrange.ico"; Tasks: desktopicon
 
 [Registry]
 Root: HKA; Subkey: "Software\Classes\PerdangaVSP.Video"; ValueType: string; ValueName: ""; ValueData: "Perdanga VSP Video File"; Flags: uninsdeletekey; Tasks: associatefiles
-Root: HKA; Subkey: "Software\Classes\PerdangaVSP.Video\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\ui\ico\video.ico,0"; Tasks: associatefiles
+Root: HKA; Subkey: "Software\Classes\PerdangaVSP.Video\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\icons\video.ico,0"; Tasks: associatefiles
 Root: HKA; Subkey: "Software\Classes\PerdangaVSP.Video\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""; Tasks: associatefiles
 
 Root: HKA; Subkey: "Software\Classes\PerdangaVSP.Audio"; ValueType: string; ValueName: ""; ValueData: "Perdanga VSP Audio File"; Flags: uninsdeletekey; Tasks: associatefiles
-Root: HKA; Subkey: "Software\Classes\PerdangaVSP.Audio\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\ui\ico\audio.ico,0"; Tasks: associatefiles
+Root: HKA; Subkey: "Software\Classes\PerdangaVSP.Audio\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\icons\audio.ico,0"; Tasks: associatefiles
 Root: HKA; Subkey: "Software\Classes\PerdangaVSP.Audio\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""; Tasks: associatefiles
 
 Root: HKA; Subkey: "Software\Classes\.mp4\OpenWithProgids"; ValueType: string; ValueName: "PerdangaVSP.Video"; ValueData: ""; Flags: uninsdeletevalue; Tasks: associatefiles
@@ -165,6 +182,12 @@ begin
   WizardForm.DirEdit.Font.Color := COLOR_TEXT_WHITE;
   WizardForm.DiskSpaceLabel.Font.Color := COLOR_SAGE;
 
+  WizardForm.SelectStartMenuFolderLabel.Font.Color := COLOR_TEXT_WHITE;
+  WizardForm.SelectStartMenuFolderBrowseLabel.Font.Color := COLOR_SAGE;
+  WizardForm.GroupEdit.Color := COLOR_SURFACE;
+  WizardForm.GroupEdit.Font.Color := COLOR_TEXT_WHITE;
+  WizardForm.NoIconsCheck.Font.Color := COLOR_TEXT_WHITE;
+
   WizardForm.SelectTasksLabel.Font.Color := COLOR_TEXT_WHITE;
   WizardForm.TasksList.Color := COLOR_SURFACE;
   WizardForm.TasksList.Font.Color := COLOR_TEXT_WHITE;
@@ -182,6 +205,35 @@ begin
   if CurPageID = wpSelectDir then
   begin
     WizardForm.DiskSpaceLabel.Font.Color := COLOR_SAGE;
+    WizardForm.SelectDirLabel.Font.Color := COLOR_TEXT_WHITE;
+    WizardForm.SelectDirBrowseLabel.Font.Color := COLOR_SAGE;
+    WizardForm.DirEdit.Color := COLOR_SURFACE;
+    WizardForm.DirEdit.Font.Color := COLOR_TEXT_WHITE;
+  end
+  else if CurPageID = wpSelectProgramGroup then
+  begin
+    WizardForm.SelectStartMenuFolderLabel.Font.Color := COLOR_TEXT_WHITE;
+    WizardForm.SelectStartMenuFolderBrowseLabel.Font.Color := COLOR_SAGE;
+    WizardForm.GroupEdit.Color := COLOR_SURFACE;
+    WizardForm.GroupEdit.Font.Color := COLOR_TEXT_WHITE;
+    WizardForm.NoIconsCheck.Font.Color := COLOR_TEXT_WHITE;
+  end
+  else if CurPageID = wpSelectTasks then
+  begin
+    WizardForm.SelectTasksLabel.Font.Color := COLOR_TEXT_WHITE;
+    WizardForm.TasksList.Color := COLOR_SURFACE;
+    WizardForm.TasksList.Font.Color := COLOR_TEXT_WHITE;
+  end
+  else if CurPageID = wpReady then
+  begin
+    WizardForm.ReadyLabel.Font.Color := COLOR_TEXT_WHITE;
+    WizardForm.ReadyMemo.Color := COLOR_SURFACE;
+    WizardForm.ReadyMemo.Font.Color := COLOR_TEXT_WHITE;
+  end
+  else if CurPageID = wpInstalling then
+  begin
+    WizardForm.StatusLabel.Font.Color := COLOR_TEXT_WHITE;
+    WizardForm.FileNameLabel.Font.Color := COLOR_SAGE;
   end
   else if CurPageID = wpFinished then
   begin

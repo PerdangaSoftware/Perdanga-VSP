@@ -10,19 +10,26 @@
 namespace {
     static const char b64_table[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-    std::string Base64Encode(const unsigned char* data, size_t len) {
-        std::string out;
-        out.reserve(((len + 2) / 3) * 4);
+    void Base64EncodeAppend(const unsigned char* data, size_t len, std::string& out) {
+        size_t start = out.size();
+        size_t encodedLen = ((len + 2) / 3) * 4;
+        out.resize(start + encodedLen);
+        char* p = &out[start];
         for (size_t i = 0; i < len; i += 3) {
-            uint32_t octet_a = i < len ? data[i] : 0;
+            uint32_t octet_a = data[i];
             uint32_t octet_b = (i + 1) < len ? data[i + 1] : 0;
             uint32_t octet_c = (i + 2) < len ? data[i + 2] : 0;
             uint32_t triple = (octet_a << 16) | (octet_b << 8) | octet_c;
-            out.push_back(b64_table[(triple >> 18) & 0x3F]);
-            out.push_back(b64_table[(triple >> 12) & 0x3F]);
-            out.push_back((i + 1) < len ? b64_table[(triple >> 6) & 0x3F] : '=');
-            out.push_back((i + 2) < len ? b64_table[triple & 0x3F] : '=');
+            *p++ = b64_table[(triple >> 18) & 0x3F];
+            *p++ = b64_table[(triple >> 12) & 0x3F];
+            *p++ = (i + 1) < len ? b64_table[(triple >> 6) & 0x3F] : '=';
+            *p++ = (i + 2) < len ? b64_table[triple & 0x3F] : '=';
         }
+    }
+
+    std::string Base64Encode(const unsigned char* data, size_t len) {
+        std::string out;
+        Base64EncodeAppend(data, len, out);
         return out;
     }
 }
@@ -73,6 +80,8 @@ void MpvPlayer::ApplyHighFidelityRenderProfiles() {
     mpv_set_option_string(m_mpv, "video-sync", "display-resample");
     mpv_set_option_string(m_mpv, "interpolation", "yes");
     mpv_set_option_string(m_mpv, "tscale", "oversample");
+    mpv_set_option_string(m_mpv, "hr-seek", "yes");
+    mpv_set_option_string(m_mpv, "hr-seek-framedrop", "yes");
 
     mpv_set_option_string(m_mpv, "sub-font", "Segoe UI");
     mpv_set_option_string(m_mpv, "sub-font-size", "44");
@@ -91,10 +100,10 @@ void MpvPlayer::ApplyHighFidelityRenderProfiles() {
     }
 
     mpv_set_option_string(m_mpv, "cache", "yes");
-    mpv_set_option_string(m_mpv, "demuxer-max-bytes", "268435456");
-    mpv_set_option_string(m_mpv, "demuxer-max-back-bytes", "67108864");
+    mpv_set_option_string(m_mpv, "demuxer-max-bytes", "33554432");
+    mpv_set_option_string(m_mpv, "demuxer-max-back-bytes", "8388608");
     mpv_set_option_string(m_mpv, "demuxer-readahead-secs", "20");
-    mpv_set_option_string(m_mpv, "demuxer-lavf-buffersize", "4194304");
+    mpv_set_option_string(m_mpv, "demuxer-lavf-buffersize", "524288");
     mpv_set_option_string(m_mpv, "audio-buffer", "0.2");
     mpv_set_option_string(m_mpv, "audio-pitch-correction", "yes");
     mpv_set_option_string(m_mpv, "volume-max", "150");
@@ -141,35 +150,40 @@ bool MpvPlayer::Initialize(HWND videoHwnd) {
     ObserveProperty("dwidth");
     ObserveProperty("dheight");
 
-    m_thumbHwnd = CreateWindowExW(WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE, L"STATIC", L"", WS_POPUP, -4000, -4000, 320, 180, NULL, NULL, GetModuleHandle(NULL), NULL);
-    ShowWindow(m_thumbHwnd, SW_SHOWNOACTIVATE);
-
     m_thumbMpv = mpv_create();
-    if (m_thumbMpv && m_thumbHwnd) {
-        int64_t twid = (int64_t)(intptr_t)m_thumbHwnd;
-        mpv_set_option(m_thumbMpv, "wid", MPV_FORMAT_INT64, &twid);
-        mpv_set_option_string(m_thumbMpv, "vo", "gpu");
-        mpv_set_option_string(m_thumbMpv, "gpu-api", "d3d11");
-        mpv_set_option_string(m_thumbMpv, "hwdec", "auto-safe");
+    if (m_thumbMpv) {
+        mpv_set_option_string(m_thumbMpv, "vo", "null");
         mpv_set_option_string(m_thumbMpv, "audio", "no");
         mpv_set_option_string(m_thumbMpv, "sub", "no");
+        mpv_set_option_string(m_thumbMpv, "aid", "no");
+        mpv_set_option_string(m_thumbMpv, "sid", "no");
+        mpv_set_option_string(m_thumbMpv, "secondary-sid", "no");
         mpv_set_option_string(m_thumbMpv, "pause", "yes");
         mpv_set_option_string(m_thumbMpv, "idle", "yes");
+        mpv_set_option_string(m_thumbMpv, "vf", "scale=w=320:h=180:force_original_aspect_ratio=decrease");
+        mpv_set_option_string(m_thumbMpv, "hwdec", "no");
+        mpv_set_option_string(m_thumbMpv, "sws-scaler", "fast-bilinear");
+        mpv_set_option_string(m_thumbMpv, "sws-fast", "yes");
         mpv_set_option_string(m_thumbMpv, "scale", "bilinear");
         mpv_set_option_string(m_thumbMpv, "cscale", "bilinear");
         mpv_set_option_string(m_thumbMpv, "dscale", "bilinear");
         mpv_set_option_string(m_thumbMpv, "deband", "no");
         mpv_set_option_string(m_thumbMpv, "interpolation", "no");
         mpv_set_option_string(m_thumbMpv, "video-sync", "audio");
-        mpv_set_option_string(m_thumbMpv, "demuxer-max-bytes", "33554432");
-        mpv_set_option_string(m_thumbMpv, "demuxer-readahead-secs", "1");
-        mpv_set_option_string(m_thumbMpv, "vd-lavc-threads", "2");
+        mpv_set_option_string(m_thumbMpv, "demuxer-max-bytes", "67108864");
+        mpv_set_option_string(m_thumbMpv, "demuxer-max-back-bytes", "8388608");
+        mpv_set_option_string(m_thumbMpv, "demuxer-readahead-secs", "0");
+        mpv_set_option_string(m_thumbMpv, "demuxer-lavf-buffersize", "1048576");
+        mpv_set_option_string(m_thumbMpv, "demuxer-mkv-probe-start-time", "no");
+        mpv_set_option_string(m_thumbMpv, "vd-lavc-threads", "6");
         mpv_set_option_string(m_thumbMpv, "vd-lavc-fast", "yes");
-        mpv_set_option_string(m_thumbMpv, "vd-lavc-dr", "no");
-        mpv_set_option_string(m_thumbMpv, "framedrop", "no");
-        mpv_set_option_string(m_thumbMpv, "hr-seek-framedrop", "no");
+        mpv_set_option_string(m_thumbMpv, "vd-lavc-skiploopfilter", "all");
+        mpv_set_option_string(m_thumbMpv, "vd-lavc-dr", "yes");
+        mpv_set_option_string(m_thumbMpv, "framedrop", "yes");
+        mpv_set_option_string(m_thumbMpv, "hr-seek", "no");
+        mpv_set_option_string(m_thumbMpv, "hr-seek-framedrop", "yes");
         mpv_set_option_string(m_thumbMpv, "screenshot-format", "jpeg");
-        mpv_set_option_string(m_thumbMpv, "screenshot-jpeg-quality", "75");
+        mpv_set_option_string(m_thumbMpv, "screenshot-jpeg-quality", "55");
         mpv_set_option_string(m_thumbMpv, "screenshot-high-bit-depth", "no");
         mpv_set_option_string(m_thumbMpv, "osc", "no");
         mpv_set_option_string(m_thumbMpv, "osd-bar", "no");
@@ -178,9 +192,6 @@ bool MpvPlayer::Initialize(HWND videoHwnd) {
             mpv_destroy(m_thumbMpv);
             m_thumbMpv = nullptr;
         }
-    } else if (m_thumbMpv) {
-        mpv_destroy(m_thumbMpv);
-        m_thumbMpv = nullptr;
     }
 
     std::error_code ec;
@@ -196,6 +207,7 @@ bool MpvPlayer::Initialize(HWND videoHwnd) {
     m_running.store(true, std::memory_order_release);
     m_eventThread = std::thread(&MpvPlayer::EventLoop, this);
     m_thumbThread = std::thread(&MpvPlayer::ThumbnailLoop, this);
+    SetThreadPriority(m_thumbThread.native_handle(), THREAD_PRIORITY_NORMAL);
     return true;
 }
 
@@ -241,16 +253,23 @@ void MpvPlayer::LoadFile(const std::string& filePath) {
     if (m_thumbMpv) {
         std::lock_guard<std::mutex> lock(m_thumbMutex);
         m_currentThumbFilePath = filePath;
+        m_pendingThumbTime = -1.0;
+        m_hasPendingThumbRequest.store(false, std::memory_order_relaxed);
         const char* tcmd[] = { "loadfile", filePath.c_str(), "replace", NULL };
         mpv_command_async(m_thumbMpv, 0, tcmd);
         mpv_set_property_string(m_thumbMpv, "pause", "yes");
     }
 }
 
-void MpvPlayer::RequestThumbnail(double time) {
-    std::lock_guard<std::mutex> lock(m_thumbMutex);
-    m_pendingThumbTime = time;
-    m_hasPendingThumbRequest = true;
+void MpvPlayer::RequestThumbnail(double time, bool exact, uint64_t reqId) {
+    {
+        std::lock_guard<std::mutex> lock(m_thumbMutex);
+        m_pendingThumbTime = time;
+        m_pendingThumbExact = exact;
+        m_pendingThumbReqId = reqId;
+        m_latestReqId.store(reqId, std::memory_order_relaxed);
+        m_hasPendingThumbRequest.store(true, std::memory_order_relaxed);
+    }
     m_thumbCv.notify_one();
 }
 
@@ -274,46 +293,91 @@ bool MpvPlayer::GetVideoDimensions(int& width, int& height) const {
 void MpvPlayer::ThumbnailLoop() {
     while (m_running.load(std::memory_order_acquire)) {
         double targetTime = -1.0;
+        bool isExact = false;
+        uint64_t targetReqId = 0;
         {
             std::unique_lock<std::mutex> lock(m_thumbMutex);
             m_thumbCv.wait(lock, [this]() {
-                return !m_running.load(std::memory_order_acquire) || m_hasPendingThumbRequest;
+                return !m_running.load(std::memory_order_acquire) || m_hasPendingThumbRequest.load(std::memory_order_relaxed);
             });
             if (!m_running.load(std::memory_order_acquire)) break;
             targetTime = m_pendingThumbTime;
-            m_hasPendingThumbRequest = false;
+            isExact = m_pendingThumbExact;
+            targetReqId = m_pendingThumbReqId;
+            m_hasPendingThumbRequest.store(false, std::memory_order_relaxed);
         }
 
         if (!m_thumbMpv || targetTime < 0) continue;
+        if (targetReqId > 0 && targetReqId < m_latestReqId.load(std::memory_order_relaxed)) continue;
 
-        std::string timeStr = std::to_string(targetTime);
-        const char* seekCmd[] = { "seek", timeStr.c_str(), "absolute+keyframes", NULL };
+        std::ostringstream ss;
+        ss.precision(3);
+        ss << std::fixed << targetTime;
+        std::string timeStr = ss.str();
+        const char* seekMode = isExact ? "absolute+exact" : "absolute+keyframes";
+        const char* seekCmd[] = { "seek", timeStr.c_str(), seekMode, NULL };
         mpv_command(m_thumbMpv, seekCmd);
 
+        bool seekOk = false;
+        int maxWait = isExact ? 120 : 70;
         int waitCount = 0;
-        while (waitCount < 15) {
-            mpv_event* ev = mpv_wait_event(m_thumbMpv, 0.01);
+        while (waitCount < maxWait) {
+            if (m_hasPendingThumbRequest.load(std::memory_order_relaxed)) break;
+            if (targetReqId > 0 && targetReqId < m_latestReqId.load(std::memory_order_relaxed)) break;
+            mpv_event* ev = mpv_wait_event(m_thumbMpv, 0.005);
             if (!m_running.load(std::memory_order_acquire)) break;
-            if (ev && (ev->event_id == MPV_EVENT_PLAYBACK_RESTART || ev->event_id == MPV_EVENT_SEEK)) {
+            if (ev && ev->event_id == MPV_EVENT_PLAYBACK_RESTART) {
+                seekOk = true;
                 break;
             }
             waitCount++;
         }
 
+        if (!seekOk) continue;
+        if (m_hasPendingThumbRequest.load(std::memory_order_relaxed)) continue;
+        if (targetReqId > 0 && targetReqId < m_latestReqId.load(std::memory_order_relaxed)) continue;
+
+        double actualTime = targetTime;
+        mpv_get_property(m_thumbMpv, "time-pos", MPV_FORMAT_DOUBLE, &actualTime);
+
         const char* ssCmd[] = { "screenshot-to-file", m_tempThumbPath.c_str(), "video", NULL };
         if (mpv_command(m_thumbMpv, ssCmd) >= 0) {
-            std::ifstream file(m_tempThumbPath, std::ios::binary);
-            if (file.is_open()) {
-                std::vector<unsigned char> buffer(std::istreambuf_iterator<char>(file), {});
-                file.close();
-                if (!buffer.empty()) {
-                    std::string b64 = Base64Encode(buffer.data(), buffer.size());
-                    std::string jsonStr = "{\"type\":\"thumbnail-ready\",\"time\":" + std::to_string(targetTime) + ",\"data\":\"data:image/jpeg;base64," + b64 + "\"}";
-                    std::lock_guard<std::mutex> lock(m_cbMutex);
-                    if (m_eventCallback) {
-                        m_eventCallback(jsonStr);
+            if (m_hasPendingThumbRequest.load(std::memory_order_relaxed)) continue;
+            if (targetReqId > 0 && targetReqId < m_latestReqId.load(std::memory_order_relaxed)) continue;
+            HANDLE hFile = CreateFileA(m_tempThumbPath.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_SEQUENTIAL_SCAN, NULL);
+            if (hFile != INVALID_HANDLE_VALUE) {
+                DWORD fileSize = GetFileSize(hFile, NULL);
+                if (fileSize > 0 && fileSize < 500000) {
+                    m_thumbBuffer.resize(fileSize);
+                    DWORD bytesRead = 0;
+                    if (ReadFile(hFile, m_thumbBuffer.data(), fileSize, &bytesRead, NULL) && bytesRead == fileSize) {
+                        if (m_hasPendingThumbRequest.load(std::memory_order_relaxed) || (targetReqId > 0 && targetReqId < m_latestReqId.load(std::memory_order_relaxed))) {
+                            CloseHandle(hFile);
+                            continue;
+                        }
+                        std::ostringstream actualSs;
+                        actualSs.precision(3);
+                        actualSs << std::fixed << actualTime;
+                        std::string actualTimeStr = actualSs.str();
+
+                        std::string jsonStr;
+                        jsonStr.reserve(fileSize * 2 + 160);
+                        jsonStr += "{\"type\":\"thumbnail-ready\",\"reqId\":";
+                        jsonStr += std::to_string(targetReqId);
+                        jsonStr += ",\"time\":";
+                        jsonStr += actualTimeStr;
+                        jsonStr += ",\"requestedTime\":";
+                        jsonStr += timeStr;
+                        jsonStr += ",\"data\":\"data:image/jpeg;base64,";
+                        Base64EncodeAppend(m_thumbBuffer.data(), bytesRead, jsonStr);
+                        jsonStr += "\"}";
+                        std::lock_guard<std::mutex> lock(m_cbMutex);
+                        if (m_eventCallback) {
+                            m_eventCallback(jsonStr);
+                        }
                     }
                 }
+                CloseHandle(hFile);
             }
         }
     }

@@ -45,6 +45,7 @@
         },
 
         isChromiumSupportedVideo(codecName, filePath) {
+            if (!window.chrome || !window.chrome.webview) return false;
             if (!codecName) {
                 if (!filePath) return false;
                 const ext = filePath.split('.').pop().toLowerCase();

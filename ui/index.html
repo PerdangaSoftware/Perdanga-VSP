@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Perdanga VSP</title>
+    <title>Perdanga VSP v1.3</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -43,7 +43,7 @@
 
         <div id="emptyState">
             <div class="empty-state-content">
-                <img src="ico/GreenOrange.ico" id="mainLogo" alt="Logo" class="main-logo">
+                <img id="mainLogo" alt="" class="main-logo" draggable="false">
                 <div class="title-glow">Perdanga Forever!</div>
                 <label for="fileInput" class="btn-primary">Open Media File</label>
                 <input type="file" id="fileInput" accept="video/*, audio/*, .mkv, .mp4, .webm, .mp3, .wav, .flac, .ogg, .m4a, .avi, .mov" multiple style="display: none;">
@@ -53,7 +53,7 @@
 
         <div id="audioVisualizer">
             <div class="audio-pulse-ring"></div>
-            <img src="ico/GreenOrange.ico" id="audioLogo" alt="Audio Playing" class="audio-logo">
+            <img id="audioLogo" alt="" class="audio-logo" draggable="false">
         </div>
 
         <div id="videoClickSurface"></div>
@@ -89,10 +89,15 @@
 
         <div id="timelineTooltip">
             <div class="thumb-container" id="thumbContainer">
-                <video id="thumbVideo" muted preload="metadata"></video>
-                <img id="thumbImg" class="thumb-img" alt="" style="display: none;" />
+                <canvas id="thumbCanvas" width="320" height="180"></canvas>
             </div>
-            <div id="thumbText">00:00:00.000 | Frame: 0</div>
+            <div id="thumbText">
+                <div class="thumb-meta-row">
+                    <span class="thumb-time">00:00:00.000</span>
+                    <span class="thumb-sep">•</span>
+                    <span class="thumb-frame">Frame 0</span>
+                </div>
+            </div>
         </div>
 
         <div id="mpvVolumeOsd" class="vsp-volume-osd">
@@ -184,7 +189,7 @@
                         <div class="block-divider"></div>
                         <div class="switch-wrap" id="subSwitchWrap">
                             <button class="icon-btn" id="subSwitchBtn" title="Switch Subtitles">
-                                <svg viewBox="0 0 24 24"><path d="M20,4H4C2.89,4,2,6v12c0,1.11,0.89,2,2,2h16c1.11,0,2-0.89,2-2V6C22,4.89,21.11,4,20,4z M20,18H4V6h16V18z M6,10h2v2H6V10z M6,14h8v2H6V14z M16,14h2v2h-2V14z M10,10h8v2h-8V10z"/></svg>
+                                <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V6h16v12zM6 10h2v2H6v-2zm0 4h8v2H6v-2zm10 0h2v2h-2v-2zm-6-4h8v2h-8v-2z"/></svg>
                             </button>
                             <span id="subTrackCount" class="track-count">Off</span>
                             <button class="icon-btn" id="loadSubBtn" title="Load External Subtitle" style="margin-left: -4px;">
@@ -232,16 +237,38 @@
                 <div class="settings-body">
                     <div class="setting-group">
                         <label>App Icon</label>
-                        <select id="appIconSelect">
-                            <option value="ico/GreenOrange.ico" selected>Green Orange (Default)</option>
-                            <option value="ico/Dark Turquoise.ico">Dark Turquoise</option>
-                            <option value="ico/perdangavsp.ico">Classic (Orange)</option>
-                            <option value="ico/perdangavspblack.ico">Black</option>
-                        </select>
+                        <div class="custom-select-wrap" id="appIconDropdown">
+                            <div class="custom-select-trigger" id="appIconTrigger" tabindex="0">
+                                <span class="custom-select-label" id="appIconLabel">Green Orange (Default)</span>
+                                <svg class="custom-select-arrow" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+                            </div>
+                            <div class="custom-select-menu" id="appIconMenu">
+                                <div class="custom-select-option selected" data-value="ico/GreenOrange.ico">Green Orange (Default)</div>
+                                <div class="custom-select-option" data-value="ico/Dark_Turquoise.ico">Dark Turquoise</div>
+                                <div class="custom-select-option" data-value="ico/perdangavsp.ico">Classic (Orange)</div>
+                                <div class="custom-select-option" data-value="ico/perdangavspblack.ico">Black</div>
+                            </div>
+                            <input type="hidden" id="appIconSelect" value="ico/GreenOrange.ico">
+                        </div>
                     </div>
                     <div class="setting-group">
                         <label>Accent Color</label>
-                        <input type="color" id="accentColorPicker" value="#c4c9b6">
+                        <div class="accent-palette" id="accentPalette">
+                            <button type="button" class="accent-swatch active" data-color="#a5b087" style="background-color: #a5b087;" title="Muted Sage"></button>
+                            <button type="button" class="accent-swatch" data-color="#5b8273" style="background-color: #5b8273;" title="Nordic Teal"></button>
+                            <button type="button" class="accent-swatch" data-color="#4c778a" style="background-color: #4c778a;" title="Ocean Slate"></button>
+                            <button type="button" class="accent-swatch" data-color="#636b8e" style="background-color: #636b8e;" title="Dusty Indigo"></button>
+                            <button type="button" class="accent-swatch" data-color="#82627a" style="background-color: #82627a;" title="Heather Plum"></button>
+                            <button type="button" class="accent-swatch" data-color="#8a5a62" style="background-color: #8a5a62;" title="Burgundy Rose"></button>
+                            <button type="button" class="accent-swatch" data-color="#966c51" style="background-color: #966c51;" title="Warm Ochre"></button>
+                            <button type="button" class="accent-swatch" data-color="#70757d" style="background-color: #70757d;" title="Slate Charcoal"></button>
+                        </div>
+                        <div class="accent-custom-row">
+                            <div class="accent-preview" id="accentPreview" style="background-color: #a5b087;"></div>
+                            <input type="text" id="accentHexInput" class="accent-hex-input" value="#a5b087" maxlength="7" spellcheck="false" placeholder="#a5b087">
+                            <button type="button" id="btnPickColor" class="btn-pick-color" title="Open Custom Color Dialog">Custom...</button>
+                            <input type="hidden" id="accentColorPicker" value="#a5b087">
+                        </div>
                     </div>
                     <div class="setting-group">
                         <label>Subtitle Size</label>
@@ -250,13 +277,6 @@
                     <div class="setting-group">
                         <label>Subtitle Position (Height)</label>
                         <input type="range" id="subPosSlider" min="5" max="100" step="1" value="100">
-                    </div>
-                    <div class="setting-group row">
-                        <label>Enable Menu & Logo Glow</label>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="glowToggle">
-                            <span class="slider-toggle"></span>
-                        </label>
                     </div>
                     <div class="setting-group row">
                         <label>Enable Chapters</label>
@@ -287,6 +307,7 @@
                     <div class="setting-group" style="margin-top: 10px;">
                         <button id="openHotkeysBtn" class="btn-primary" style="padding: 10px; font-size: 0.95rem; width: 100%;">View Hotkeys & Controls</button>
                     </div>
+                    <div style="text-align: center; font-size: 0.75rem; color: var(--text-sub); margin-top: 6px; opacity: 0.6;">Perdanga VSP v1.3</div>
                 </div>
             </div>
         </div>
@@ -314,13 +335,12 @@
                     <div class="hotkey-row"><span class="hk-key">G / H</span><span class="hk-desc">Subtitle Sync Delay (-/+ 0.1s)</span></div>
                     <div class="hotkey-row"><span class="hk-key">Mouse Wheel</span><span class="hk-desc">Adjust Volume (video/icon), Speed, or Cycle Tracks</span></div>
                     <div class="hotkey-row"><span class="hk-key">Right Click</span><span class="hk-desc">Quick Track & Subtitle Selection Menu</span></div>
-                    <div class="hotkey-row"><span class="hk-key">Escape</span><span class="hk-desc">Exit Fullscreen or Close Active Modal / Panel</span></div>
+                    <div class="hotkey-row"><span class="hk-key">Escape</span><span class="hk-desc">Exit Fullscreen, Close Menus, or Minimize</span></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modular Frontend Pipeline -->
     <script src="bridge.js"></script>
     <script src="state.js"></script>
     <script src="utils.js"></script>

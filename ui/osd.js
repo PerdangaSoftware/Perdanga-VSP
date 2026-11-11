@@ -6,6 +6,33 @@
     let osdTimeout = null;
     let uiTimeout = null;
     let mpvVolTimeout = null;
+    let isControlsHovered = false;
+    let isTitleBarHovered = false;
+
+    function initHoverListeners() {
+        const c = document.getElementById('controls');
+        if (c) {
+            c.addEventListener('mouseenter', () => { isControlsHovered = true; });
+            c.addEventListener('mouseleave', () => {
+                isControlsHovered = false;
+                if (App.Elements && App.Elements.timelineTooltip) {
+                    App.Elements.timelineTooltip.style.display = 'none';
+                }
+                if (App.State) App.State.currentHoverSec = -1;
+            });
+        }
+        const t = document.getElementById('customTitleBar');
+        if (t) {
+            t.addEventListener('mouseenter', () => { isTitleBarHovered = true; });
+            t.addEventListener('mouseleave', () => { isTitleBarHovered = false; });
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initHoverListeners);
+    } else {
+        initHoverListeners();
+    }
 
     App.OSD = {
         showVolumeBar(vol, isMuted = false) {
@@ -86,13 +113,21 @@
         },
 
         hideUI() {
-            App.Elements.playerContainer.classList.add('hide-ui');
+            if (App.Elements.playerContainer) App.Elements.playerContainer.classList.add('hide-ui');
             document.body.classList.add('hide-cursor');
+            if (App.Elements.timelineTooltip) App.Elements.timelineTooltip.style.display = 'none';
+            if (App.State) App.State.currentHoverSec = -1;
+            if (window.electronAPI && typeof window.electronAPI.setCursorHidden === 'function') {
+                window.electronAPI.setCursorHidden(true);
+            }
         },
 
         showUI() {
-            App.Elements.playerContainer.classList.remove('hide-ui');
+            if (App.Elements.playerContainer) App.Elements.playerContainer.classList.remove('hide-ui');
             document.body.classList.remove('hide-cursor');
+            if (window.electronAPI && typeof window.electronAPI.setCursorHidden === 'function') {
+                window.electronAPI.setCursorHidden(false);
+            }
         },
 
         resetUIHider(e) {
@@ -116,8 +151,14 @@
 
             if (!state.isPaused) {
                 uiTimeout = setTimeout(() => {
-                    const controlsHovered = document.getElementById('controls').matches(':hover');
-                    const titleBarHovered = document.getElementById('customTitleBar').matches(':hover');
+                    let controlsHovered = isControlsHovered;
+                    let titleBarHovered = isTitleBarHovered;
+                    try {
+                        const c = document.getElementById('controls');
+                        if (c && c.matches(':hover')) controlsHovered = true;
+                        const t = document.getElementById('customTitleBar');
+                        if (t && t.matches(':hover')) titleBarHovered = true;
+                    } catch (err) {}
                     const modalOpen = el.settingsModal.classList.contains('show') ||
                                       el.hotkeysModal.classList.contains('show') ||
                                       el.contextMenu.classList.contains('show') ||

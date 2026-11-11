@@ -213,9 +213,25 @@
                     el.playerContainer.classList.remove('drag-active');
                 }
             });
+            document.addEventListener('selectstart', (e) => {
+                if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+                    e.preventDefault();
+                }
+            });
+            if (el.emptyState) {
+                el.emptyState.addEventListener('mousedown', (e) => {
+                    if (!e.target.closest('button, input, label, .btn-primary')) {
+                        e.preventDefault();
+                    }
+                });
+            }
+
             document.addEventListener('drop', (e) => {
                 e.preventDefault();
                 el.playerContainer.classList.remove('drag-active');
+                if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    App.Main.handleMediaFiles(e.dataTransfer.files);
+                }
             });
 
             window.mpvAPI.onEvent((data) => {
@@ -477,7 +493,9 @@
         window.mpvAPI.setProperty('volume', 100);
         window.mpvAPI.setProperty('speed', 1.0);
 
-        if (window.chrome && window.chrome.webview) {
+        if (window.electronAPI && typeof window.electronAPI.appReady === 'function') {
+            window.electronAPI.appReady();
+        } else if (window.chrome && window.chrome.webview) {
             window.chrome.webview.postMessage({ type: 'app-ready' });
         }
     }

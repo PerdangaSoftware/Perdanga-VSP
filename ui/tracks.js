@@ -114,10 +114,14 @@
 
         getDetailedTrackLabel(track) {
             let titleStr = track.title;
-            if ((!titleStr || (track.codec && titleStr.toLowerCase() === track.codec.toLowerCase())) && track['external-filename']) {
-                const raw = track['external-filename'];
-                const slashIdx = Math.max(raw.lastIndexOf('/'), raw.lastIndexOf('\\'));
-                const rawName = slashIdx >= 0 ? raw.substring(slashIdx + 1) : raw;
+            const extFile = track['external-filename'] || track.src || track.filename;
+            const isGenericCodecTitle = !titleStr ||
+                (track.codec && titleStr.toLowerCase() === track.codec.toLowerCase()) ||
+                (track.format && titleStr.toLowerCase() === track.format.toLowerCase()) ||
+                ['ass', 'srt', 'vtt', 'ssa', 'mka', 'mp3', 'aac', 'flac'].includes(titleStr.toLowerCase());
+            if (isGenericCodecTitle && extFile) {
+                const slashIdx = Math.max(extFile.lastIndexOf('/'), extFile.lastIndexOf('\\'));
+                const rawName = slashIdx >= 0 ? extFile.substring(slashIdx + 1) : extFile;
                 const lastDot = rawName.lastIndexOf('.');
                 titleStr = lastDot > 0 ? rawName.substring(0, lastDot) : rawName;
             }
@@ -148,13 +152,13 @@
             const el = App.Elements;
             const state = App.State;
             el.audioTrackCount.textContent = state.audioStreams.length > 0
-                ? `${state.audioStreams.findIndex(t => t.id === state.currentAudioTrack) + 1}/${state.audioStreams.length}`
+                ? `${state.audioStreams.findIndex(t => t.id == state.currentAudioTrack) + 1}/${state.audioStreams.length}`
                 : '0/0';
 
             if (state.currentSubTrack === 'off') {
                 el.subTrackCount.textContent = 'Off';
             } else {
-                const idx = state.subStreams.findIndex(t => t.id === state.currentSubTrack);
+                const idx = state.subStreams.findIndex(t => t.id == state.currentSubTrack);
                 el.subTrackCount.textContent = idx >= 0
                     ? `${idx + 1}/${state.subStreams.length}`
                     : (state.subStreams.length > 0 ? `1/${state.subStreams.length}` : 'Off');
@@ -164,7 +168,7 @@
         setAudioTrack(trackId) {
             if (App.State.isAudioMode) return;
             App.State.currentAudioTrack = trackId;
-            window.mpvAPI.setProperty('aid', trackId);
+            window.mpvAPI.setProperty('aid', String(trackId));
             App.Tracks.updateTrackCounters();
         },
 
@@ -175,7 +179,7 @@
                 window.mpvAPI.setProperty('sid', 'no');
             } else {
                 window.mpvAPI.setProperty('sub-visibility', 'yes');
-                window.mpvAPI.setProperty('sid', trackId);
+                window.mpvAPI.setProperty('sid', String(trackId));
             }
             App.Tracks.updateTrackCounters();
         },
@@ -183,7 +187,7 @@
         cycleAudio(direction) {
             const state = App.State;
             if (state.audioStreams.length === 0 || state.isAudioMode) return;
-            const currentIdx = state.audioStreams.findIndex(t => t.id === state.currentAudioTrack);
+            const currentIdx = state.audioStreams.findIndex(t => t.id == state.currentAudioTrack);
             const nextIdx = (currentIdx + direction + state.audioStreams.length) % state.audioStreams.length;
             const nextTrack = state.audioStreams[nextIdx];
             App.Tracks.setAudioTrack(nextTrack.id);

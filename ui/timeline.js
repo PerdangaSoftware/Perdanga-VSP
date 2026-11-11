@@ -5,6 +5,31 @@
 
     let scrubThrottle = false;
     let hoverRafPending = false;
+    let tooltipSmoothX = -1;
+    let tooltipTargetX = -1;
+    let tooltipRafId = null;
+
+    function updateTooltipPosition() {
+        if (tooltipTargetX < 0) return;
+        if (tooltipSmoothX < 0) {
+            tooltipSmoothX = tooltipTargetX;
+        } else {
+            tooltipSmoothX += (tooltipTargetX - tooltipSmoothX) * 0.62;
+        }
+        const el = App.Elements;
+        if (el && el.timelineTooltip) {
+            el.timelineTooltip.style.left = `${tooltipSmoothX.toFixed(1)}px`;
+        }
+        if (Math.abs(tooltipTargetX - tooltipSmoothX) > 0.15) {
+            tooltipRafId = requestAnimationFrame(updateTooltipPosition);
+        } else {
+            tooltipSmoothX = tooltipTargetX;
+            if (el && el.timelineTooltip) {
+                el.timelineTooltip.style.left = `${tooltipSmoothX.toFixed(1)}px`;
+            }
+            tooltipRafId = null;
+        }
+    }
 
     App.Timeline = {
         init() {
@@ -41,13 +66,18 @@
                 if (state.isDraggingTimeline) {
                     const time = App.Timeline.getTimeFromMouseEvent(e);
                     App.Timeline.performSeek(time, false);
+                    App.Timeline.handleHoverAt(e.clientX);
                 }
             }, { passive: true });
 
             window.addEventListener('mouseup', (e) => {
                 if (!state.isMouseDownOnTimeline) return;
 
-                let time = App.Timeline.getTimeFromMouseEvent(e);
+                let rawTime = App.Timeline.getTimeFromMouseEvent(e);
+                let time = rawTime;
+                if (state.lastDisplayedThumbTime >= 0 && Math.abs(rawTime - state.lastDisplayedThumbTime) < 3.0) {
+                    time = state.lastDisplayedThumbTime;
+                }
 
                 if (state.isDraggingTimeline) {
                     state.isDraggingTimeline = false;
@@ -65,7 +95,8 @@
 
             el.timelineTooltip.addEventListener('click', (e) => {
                 e.stopPropagation();
-                const targetTime = state.currentHoverSec >= 0 ? state.currentHoverSec : state.lastDisplayedThumbTime;
+                if (!state.isVideoLoaded) return;
+                const targetTime = state.lastDisplayedThumbTime >= 0 ? state.lastDisplayedThumbTime : state.currentHoverSec;
                 if (targetTime >= 0) {
                     App.Timeline.performSeek(targetTime, true);
                     if (state.isVideoPlayingIntent) {
@@ -95,14 +126,23 @@
             el.progressWrapper.addEventListener('mouseleave', () => {
                 el.timelineTooltip.style.display = 'none';
                 state.currentHoverSec = -1;
+                tooltipTargetX = -1;
+                tooltipSmoothX = -1;
+                if (tooltipRafId) {
+                    cancelAnimationFrame(tooltipRafId);
+                    tooltipRafId = null;
+                }
+                App.Thumbnails.onMouseLeave();
             });
         },
 
         handleHoverAt(clientX) {
             const el = App.Elements;
             const state = App.State;
+            App.Thumbnails.updateVelocity(clientX);
             const sec = App.Timeline.getTimeFromMouseEvent({ clientX });
             if (isNaN(sec)) return;
+            state.currentHoverSec = sec;
 
             let hoverChapterName = '';
             if (state.chaptersEnabled && state.mediaChapters.length > 0) {
@@ -115,21 +155,29 @@
                 }
                 if (hoverIdx !== -1) {
                     const title = App.Playlist.getChapterTitle(state.mediaChapters[hoverIdx], hoverIdx);
-                    hoverChapterName = `<br><span style="color: var(--accent); font-weight: 700;">${App.Utils.escapeHTML(title)}</span>`;
+                    hoverChapterName = `<div class="thumb-chapter-badge">${App.Utils.escapeHTML(title)}</div>`;
                 }
             }
 
             const frameNumber = state.currentFps > 0 ? Math.round(sec * state.currentFps) : 0;
-            const newHTML = `${App.Utils.formatDetailedTime(sec)} | Frame: ${frameNumber}${hoverChapterName}`;
+            const detailedTime = App.Utils.formatDetailedTime(sec);
+            const newHTML = `<div class="thumb-meta-row"><span class="thumb-time">${detailedTime}</span><span class="thumb-sep">•</span><span class="thumb-frame">Frame ${frameNumber}</span></div>${hoverChapterName}`;
             if (state.lastTooltipHTML !== newHTML) {
                 el.thumbText.innerHTML = newHTML;
                 state.lastTooltipHTML = newHTML;
             }
 
             el.timelineTooltip.style.display = 'flex';
-            const tooltipHalf = 110;
-            const clampedX = Math.max(tooltipHalf, Math.min(window.innerWidth - tooltipHalf, clientX));
-            el.timelineTooltip.style.left = `${clampedX}px`;
+            const safeHalfWidth = 105;
+            const safePad = 12;
+            const clampedX = Math.max(safeHalfWidth + safePad, Math.min(window.innerWidth - safeHalfWidth - safePad, clientX));
+            tooltipTargetX = clampedX;
+            if (tooltipSmoothX < 0) {
+                tooltipSmoothX = clampedX;
+                el.timelineTooltip.style.left = `${clampedX}px`;
+            } else if (!tooltipRafId) {
+                tooltipRafId = requestAnimationFrame(updateTooltipPosition);
+            }
 
             if (state.isAudioMode) {
                 el.thumbContainer.classList.remove('has-frame');

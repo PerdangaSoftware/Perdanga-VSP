@@ -31,7 +31,7 @@ public:
     mpv_handle* GetHandle() const { return m_mpv; }
     bool IsPaused() const { return m_isPaused.load(std::memory_order_relaxed); }
 
-    void RequestThumbnail(double time);
+    void RequestThumbnail(double time, bool exact = false, uint64_t reqId = 0);
     bool GetVideoDimensions(int& width, int& height) const;
 
 private:
@@ -60,5 +60,9 @@ private:
     std::string m_currentThumbFilePath;
     std::string m_tempThumbPath;
     double m_pendingThumbTime = -1.0;
-    bool m_hasPendingThumbRequest = false;
+    bool m_pendingThumbExact = false;
+    uint64_t m_pendingThumbReqId = 0;
+    std::atomic<bool> m_hasPendingThumbRequest{ false };
+    std::atomic<uint64_t> m_latestReqId{ 0 };
+    std::vector<unsigned char> m_thumbBuffer;
 };
